@@ -31,18 +31,37 @@ export const SELECTION_CAMERA_PADDING = {
   bottom: 0.2
 } as const;
 
-// The left HUD permanently covers part of the SVG, so our "usable" map area starts
-// a little to the right of the actual left edge.
-const HUD_LEFT_RATIO = 0.24;
-const VISIBLE_LEFT_RATIO = HUD_LEFT_RATIO;
-const VISIBLE_RIGHT_RATIO = 1;
-const VISIBLE_WIDTH_RATIO = VISIBLE_RIGHT_RATIO - VISIBLE_LEFT_RATIO;
-const VISIBLE_CENTER_X_RATIO = (VISIBLE_LEFT_RATIO + VISIBLE_RIGHT_RATIO) / 2;
-const VISIBLE_CENTER_Y_RATIO = 0.5;
-
-// Selected countries should land around 25% of the usable viewport. We compare
-// width and height separately and keep the farther zoom-out so the whole country fits.
+// Selected countries should land around 25% of the usable viewport on desktop.
 const TARGET_COUNTRY_COVERAGE = 0.25;
+
+// On mobile the screen is smaller and the visible area is further reduced by the
+// keyboard and search dock. A higher target keeps countries legible, and Math.min
+// (rather than Math.max) ensures the full bounding box fits in the visible area.
+const MOBILE_TARGET_COUNTRY_COVERAGE = 0.55;
+
+interface SelectionViewportProfile {
+  bottomRatio: number;
+  centerXRatio: number;
+  centerYRatio: number;
+  leftRatio: number;
+  rightRatio: number;
+}
+
+const DESKTOP_SELECTION_VIEWPORT: SelectionViewportProfile = {
+  leftRatio: 0.24,
+  rightRatio: 1,
+  bottomRatio: 1,
+  centerXRatio: 0.62,
+  centerYRatio: 0.5
+};
+
+const MOBILE_SELECTION_VIEWPORT: SelectionViewportProfile = {
+  leftRatio: 0,
+  rightRatio: 1,
+  bottomRatio: 0.62,
+  centerXRatio: 0.5,
+  centerYRatio: 0.31
+};
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max);
@@ -77,6 +96,40 @@ export function expandBounds(
   };
 }
 
+// The SVG viewBox needs to match the viewport aspect ratio, otherwise portrait
+// screens end up letterboxing a wide world camera and all centering math feels off.
+export function matchBoundsToViewportAspect(
+  bounds: ViewBoxBounds,
+  viewportAspectRatio: number
+): ViewBoxBounds {
+  const safeAspectRatio = Math.max(0.1, viewportAspectRatio);
+  const currentAspectRatio = bounds.width / bounds.height;
+
+  if (Math.abs(currentAspectRatio - safeAspectRatio) < 0.001) {
+    return bounds;
+  }
+
+  if (currentAspectRatio > safeAspectRatio) {
+    const nextHeight = bounds.width / safeAspectRatio;
+    const extraHeight = nextHeight - bounds.height;
+
+    return {
+      ...bounds,
+      minY: bounds.minY - extraHeight / 2,
+      height: nextHeight
+    };
+  }
+
+  const nextWidth = bounds.height * safeAspectRatio;
+  const extraWidth = nextWidth - bounds.width;
+
+  return {
+    ...bounds,
+    minX: bounds.minX - extraWidth / 2,
+    width: nextWidth
+  };
+}
+
 // A camera is just the visible rectangle of the world.
 export function createInitialCamera(bounds: ViewBoxBounds): CameraState {
   return {
@@ -86,6 +139,29 @@ export function createInitialCamera(bounds: ViewBoxBounds): CameraState {
     height: bounds.height,
     zoom: 1
   };
+}
+
+export function reframeCameraToBounds(
+  camera: CameraState,
+  bounds: ViewBoxBounds
+): CameraState {
+  const currentCenter = {
+    x: camera.x + camera.width / 2,
+    y: camera.y + camera.height / 2
+  };
+  const nextWidth = bounds.width / camera.zoom;
+  const nextHeight = bounds.height / camera.zoom;
+
+  return clampCamera(
+    {
+      x: currentCenter.x - nextWidth / 2,
+      y: currentCenter.y - nextHeight / 2,
+      width: nextWidth,
+      height: nextHeight,
+      zoom: camera.zoom
+    },
+    bounds
+  );
 }
 
 // Keep the camera inside the padded world bounds so panning and zooming never
@@ -182,34 +258,70 @@ function createCameraFromCenterZoom(
   );
 }
 
-function getSuggestedSelectionZoom(camera: CameraState, country: CountryRecord) {
+export function getSelectionViewportProfile(
+  isMobileViewport: boolean,
+  mobileVisibleBottomRatio = MOBILE_SELECTION_VIEWPORT.bottomRatio
+) {
+  if (!isMobileViewport) {
+    return DESKTOP_SELECTION_VIEWPORT;
+  }
+
+  const bottomRatio = clamp(mobileVisibleBottomRatio, 0.32, 1);
+
+  return {
+    ...MOBILE_SELECTION_VIEWPORT,
+    bottomRatio,
+    centerYRatio: bottomRatio / 2
+  };
+}
+
+function getSuggestedSelectionZoom(
+  camera: CameraState,
+  country: CountryRecord,
+  viewportProfile: SelectionViewportProfile,
+  isMobileViewport: boolean
+) {
   const [minX, minY, maxX, maxY] = country.bbox;
   const countryWidth = maxX - minX;
   const countryHeight = maxY - minY;
-  const currentWidthCoverage = countryWidth / (camera.width * VISIBLE_WIDTH_RATIO);
-  const currentHeightCoverage = countryHeight / camera.height;
+  const visibleWidthRatio = viewportProfile.rightRatio - viewportProfile.leftRatio;
+  const currentWidthCoverage = countryWidth / (camera.width * visibleWidthRatio);
+  const currentHeightCoverage = countryHeight / (camera.height * viewportProfile.bottomRatio);
   const horizontalZoomTarget =
     camera.zoom * (TARGET_COUNTRY_COVERAGE / currentWidthCoverage);
   const verticalZoomTarget =
     camera.zoom * (TARGET_COUNTRY_COVERAGE / currentHeightCoverage);
+  if (isMobileViewport) {
+    // Math.min ensures the full country bbox fits in the visible area above the
+    // dock/keyboard. Math.max (old behaviour) could zoom past what fits vertically
+    // for tall narrow countries like Norway or Chile.
+    const mobileCoverage = MOBILE_TARGET_COUNTRY_COVERAGE;
+    const mobileHTarget = camera.zoom * (mobileCoverage / currentWidthCoverage);
+    const mobileVTarget = camera.zoom * (mobileCoverage / currentHeightCoverage);
+    return clamp(Math.min(mobileHTarget, mobileVTarget), MIN_CAMERA_ZOOM, MAX_CAMERA_ZOOM);
+  }
+
+  const preferredZoomTarget = Math.min(horizontalZoomTarget, verticalZoomTarget);
+
   return Math.min(
     MAX_CAMERA_ZOOM,
-    Math.max(MIN_CAMERA_ZOOM, Math.min(horizontalZoomTarget, verticalZoomTarget))
+    Math.max(MIN_CAMERA_ZOOM, preferredZoomTarget)
   );
 }
 
 function positionCameraForCountry(
   bounds: ViewBoxBounds,
   country: CountryRecord,
-  nextZoom: number
+  nextZoom: number,
+  viewportProfile: SelectionViewportProfile
 ): CameraState {
   const [minX, minY, maxX, maxY] = country.bbox;
   const nextWidth = bounds.width / nextZoom;
   const nextHeight = bounds.height / nextZoom;
   const countryCenterX = (minX + maxX) / 2;
   const countryCenterY = (minY + maxY) / 2;
-  const targetX = countryCenterX - nextWidth * VISIBLE_CENTER_X_RATIO;
-  const targetY = countryCenterY - nextHeight * VISIBLE_CENTER_Y_RATIO;
+  const targetX = countryCenterX - nextWidth * viewportProfile.centerXRatio;
+  const targetY = countryCenterY - nextHeight * viewportProfile.centerYRatio;
 
   return clampCamera(
     {
@@ -226,9 +338,20 @@ function positionCameraForCountry(
 export function getSelectionTargetCamera(
   camera: CameraState,
   bounds: ViewBoxBounds,
-  country: CountryRecord
+  country: CountryRecord,
+  isMobileViewport: boolean,
+  mobileVisibleBottomRatio?: number
 ) {
-  return positionCameraForCountry(bounds, country, getSuggestedSelectionZoom(camera, country));
+  const viewportProfile = getSelectionViewportProfile(
+    isMobileViewport,
+    mobileVisibleBottomRatio
+  );
+  return positionCameraForCountry(
+    bounds,
+    country,
+    getSuggestedSelectionZoom(camera, country, viewportProfile, isMobileViewport),
+    viewportProfile
+  );
 }
 
 function areCountryAndCameraNearWorldEdge(

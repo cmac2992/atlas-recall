@@ -5,12 +5,15 @@ import {
   type CameraState,
   SELECTION_CAMERA_PADDING,
   cameraToViewBox,
+  clampCamera,
   createInitialCamera,
   expandBounds,
   getSelectionTargetCamera,
   interpolateCamera,
+  matchBoundsToViewportAspect,
   panCamera,
   parseViewBox,
+  reframeCameraToBounds,
   shouldAnimateSelectionCamera,
   zoomCameraAtPoint
 } from "./mapGeometry";
@@ -22,6 +25,7 @@ interface WorldMapProps {
     variant: "correct" | "wrong";
     token: number;
   } | null;
+  mobileVisibleBottomPx?: number | null;
   onCountrySelect: (countryId: CountryId) => void;
   selectedCountryId: CountryId | null;
   solvedCountryIds: CountryId[];
@@ -29,10 +33,25 @@ interface WorldMapProps {
 }
 
 interface GestureState {
+  kind: "drag";
   pointerId: number;
   startX: number;
   startY: number;
   startViewBox: ReturnType<typeof createInitialCamera>;
+}
+
+interface PinchGestureState {
+  kind: "pinch";
+  pointerIds: [number, number];
+  startDistance: number;
+  startMidpointX: number;
+  startMidpointY: number;
+  startViewBox: ReturnType<typeof createInitialCamera>;
+}
+
+interface PointerSnapshot {
+  clientX: number;
+  clientY: number;
 }
 
 interface CameraAnimationState {
@@ -70,20 +89,34 @@ function easeInOutCubic(progress: number) {
 export const WorldMap = memo(function WorldMap({
   countries,
   flashEvent,
+  mobileVisibleBottomPx = null,
   onCountrySelect,
   selectedCountryId,
   solvedCountryIds,
   viewBox
 }: WorldMapProps) {
   const worldBounds = useMemo(() => parseViewBox(viewBox), [viewBox]);
+  const [svgViewportMetrics, setSvgViewportMetrics] = useState(() => ({
+    aspectRatio: worldBounds.width / worldBounds.height,
+    bottom: 0,
+    height: 0,
+    top: 0
+  }));
   const cameraBounds = useMemo(
-    () => expandBounds(worldBounds, SELECTION_CAMERA_PADDING),
-    [worldBounds]
+    () =>
+      matchBoundsToViewportAspect(
+        expandBounds(worldBounds, SELECTION_CAMERA_PADDING),
+        svgViewportMetrics.aspectRatio
+      ),
+    [svgViewportMetrics.aspectRatio, worldBounds]
   );
   const initialCamera = useMemo(() => createInitialCamera(cameraBounds), [cameraBounds]);
   const [isDragging, setIsDragging] = useState(false);
+  const [isMobileViewport, setIsMobileViewport] = useState(false);
   const [hoveredCountryId, setHoveredCountryId] = useState<CountryId | null>(null);
   const gestureRef = useRef<GestureState | null>(null);
+  const pinchGestureRef = useRef<PinchGestureState | null>(null);
+  const activePointerRef = useRef(new Map<number, PointerSnapshot>());
   const draggingRef = useRef(false);
   const flashTimeoutRef = useRef<number | null>(null);
   const renderFrameRef = useRef<number | null>(null);
@@ -91,18 +124,80 @@ export const WorldMap = memo(function WorldMap({
   const animationRef = useRef<CameraAnimationState | null>(null);
   const svgRef = useRef<SVGSVGElement | null>(null);
   const cameraRef = useRef<CameraState>(initialCamera);
+  const previousSelectionViewportSignatureRef = useRef<string | null>(null);
   const previousSelectedCountryIdRef = useRef<CountryId | null>(null);
   const solvedCountryIdSet = useMemo(() => new Set(solvedCountryIds), [solvedCountryIds]);
 
   // The camera lives in refs plus direct SVG updates so dragging does not rerender
   // every country path on every pointer move.
   useEffect(() => {
-    cameraRef.current = initialCamera;
+    const svg = svgRef.current;
+
+    if (!svg || typeof ResizeObserver === "undefined") {
+      return;
+    }
+
+    const updateSvgViewportMetrics = () => {
+      const rect = svg.getBoundingClientRect();
+
+      if (rect.width <= 0 || rect.height <= 0) {
+        return;
+      }
+
+      setSvgViewportMetrics({
+        aspectRatio: rect.width / rect.height,
+        top: rect.top,
+        bottom: rect.bottom,
+        height: rect.height
+      });
+    };
+
+    const resizeObserver = new ResizeObserver(updateSvgViewportMetrics);
+    resizeObserver.observe(svg);
+    updateSvgViewportMetrics();
+
+    return () => {
+      resizeObserver.disconnect();
+    };
+  }, []);
+
+  useEffect(() => {
+    const nextCamera =
+      cameraRef.current.zoom === initialCamera.zoom &&
+      cameraRef.current.width === initialCamera.width &&
+      cameraRef.current.height === initialCamera.height &&
+      cameraRef.current.x === initialCamera.x &&
+      cameraRef.current.y === initialCamera.y
+        ? initialCamera
+        : reframeCameraToBounds(cameraRef.current, cameraBounds);
+
+    cameraRef.current = nextCamera;
 
     if (svgRef.current) {
-      svgRef.current.setAttribute("viewBox", cameraToViewBox(initialCamera));
+      svgRef.current.setAttribute("viewBox", cameraToViewBox(nextCamera));
     }
-  }, [initialCamera]);
+  }, [cameraBounds, initialCamera]);
+
+  useEffect(() => {
+    if (
+      typeof window === "undefined" ||
+      typeof window.matchMedia !== "function"
+    ) {
+      return;
+    }
+
+    const mediaQuery = window.matchMedia("(max-width: 960px)");
+    const applyViewportMode = () => {
+      setIsMobileViewport(mediaQuery.matches);
+    };
+
+    applyViewportMode();
+    mediaQuery.addEventListener("change", applyViewportMode);
+
+    return () => {
+      mediaQuery.removeEventListener("change", applyViewportMode);
+    };
+  }, []);
 
   useEffect(() => {
     return () => {
@@ -272,18 +367,53 @@ export const WorldMap = memo(function WorldMap({
     flashCountry(flashEvent.countryId, flashEvent.variant);
   }, [flashEvent]);
 
+  const effectiveMobileVisibleBottomRatio = useMemo(() => {
+    if (!isMobileViewport || svgViewportMetrics.height <= 0) {
+      return 1;
+    }
+
+    const visibleBottom = Math.min(
+      mobileVisibleBottomPx ?? svgViewportMetrics.bottom,
+      svgViewportMetrics.bottom
+    );
+    const visibleHeight = visibleBottom - svgViewportMetrics.top;
+
+    return Math.min(1, Math.max(0.2, visibleHeight / svgViewportMetrics.height));
+  }, [
+    isMobileViewport,
+    mobileVisibleBottomPx,
+    svgViewportMetrics.bottom,
+    svgViewportMetrics.height,
+    svgViewportMetrics.top
+  ]);
+
   useEffect(() => {
     if (!selectedCountryId) {
+      previousSelectionViewportSignatureRef.current = null;
       previousSelectedCountryIdRef.current = null;
       return;
     }
 
-    // Clicking the already-selected country should not restart the whole camera move.
-    if (previousSelectedCountryIdRef.current === selectedCountryId) {
+    // A recenter should happen when either the selected country changes or the
+    // visible mobile map area changes enough to matter, such as when the keyboard
+    // opens and pushes the HUD upward.
+    const selectionViewportSignature = [
+      selectedCountryId,
+      isMobileViewport ? "mobile" : "desktop",
+      Math.round(effectiveMobileVisibleBottomRatio * 1000)
+    ].join(":");
+
+    if (
+      previousSelectionViewportSignatureRef.current ===
+      selectionViewportSignature
+    ) {
       return;
     }
 
+    const countryChanged = selectedCountryId !== previousSelectedCountryIdRef.current;
+    previousSelectionViewportSignatureRef.current = selectionViewportSignature;
     previousSelectedCountryIdRef.current = selectedCountryId;
+
     const selectedCountry = countries.find((country) => country.id === selectedCountryId);
 
     if (!selectedCountry) {
@@ -293,10 +423,16 @@ export const WorldMap = memo(function WorldMap({
     const targetCamera = getSelectionTargetCamera(
       cameraRef.current,
       cameraBounds,
-      selectedCountry
+      selectedCountry,
+      isMobileViewport,
+      effectiveMobileVisibleBottomRatio
     );
 
+    // On mobile, always animate when the country itself changes. The
+    // shouldAnimateSelectionCamera guard can still suppress redundant moves when
+    // only the keyboard/dock ratio shifts slightly.
     if (
+      !(isMobileViewport && countryChanged) &&
       !shouldAnimateSelectionCamera(
         cameraRef.current,
         targetCamera,
@@ -308,29 +444,131 @@ export const WorldMap = memo(function WorldMap({
     }
 
     animateCameraUpdate(targetCamera);
-  }, [cameraBounds, countries, selectedCountryId, worldBounds]);
+  }, [
+    cameraBounds,
+    countries,
+    effectiveMobileVisibleBottomRatio,
+    isMobileViewport,
+    selectedCountryId,
+    worldBounds
+  ]);
 
   const handlePointerDown = (event: ReactPointerEvent<SVGSVGElement>) => {
     if (event.button !== 0 && event.pointerType !== "touch") {
       return;
     }
 
+    activePointerRef.current.set(event.pointerId, {
+      clientX: event.clientX,
+      clientY: event.clientY
+    });
     setHoveredCountryId(getCountryIdFromTarget(event.target));
     setIsDragging(false);
+
+    if ("setPointerCapture" in event.currentTarget) {
+      event.currentTarget.setPointerCapture(event.pointerId);
+    }
+
+    if (event.pointerType === "touch" && activePointerRef.current.size >= 2) {
+      const [firstPointer, secondPointer] = Array.from(
+        activePointerRef.current.entries()
+      ).slice(0, 2);
+
+      stopCameraAnimation();
+      gestureRef.current = null;
+      pinchGestureRef.current = {
+        kind: "pinch",
+        pointerIds: [firstPointer[0], secondPointer[0]],
+        startDistance: Math.max(
+          Math.hypot(
+            secondPointer[1].clientX - firstPointer[1].clientX,
+            secondPointer[1].clientY - firstPointer[1].clientY
+          ),
+          1
+        ),
+        startMidpointX: (firstPointer[1].clientX + secondPointer[1].clientX) / 2,
+        startMidpointY: (firstPointer[1].clientY + secondPointer[1].clientY) / 2,
+        startViewBox: cameraRef.current
+      };
+      draggingRef.current = true;
+      setIsDragging(true);
+      setHoveredCountryId(null);
+      return;
+    }
+
+    pinchGestureRef.current = null;
     draggingRef.current = false;
     gestureRef.current = {
+      kind: "drag",
       pointerId: event.pointerId,
       startX: event.clientX,
       startY: event.clientY,
       startViewBox: cameraRef.current
     };
-
-    if ("setPointerCapture" in event.currentTarget) {
-      event.currentTarget.setPointerCapture(event.pointerId);
-    }
   };
 
   const handlePointerMove = (event: ReactPointerEvent<SVGSVGElement>) => {
+    activePointerRef.current.set(event.pointerId, {
+      clientX: event.clientX,
+      clientY: event.clientY
+    });
+
+    const pinchGesture = pinchGestureRef.current;
+
+    if (pinchGesture && pinchGesture.pointerIds.includes(event.pointerId)) {
+      const firstPointer = activePointerRef.current.get(pinchGesture.pointerIds[0]);
+      const secondPointer = activePointerRef.current.get(pinchGesture.pointerIds[1]);
+
+      if (!firstPointer || !secondPointer) {
+        return;
+      }
+
+      const rect = event.currentTarget.getBoundingClientRect();
+      const startFocusRatioX =
+        (pinchGesture.startMidpointX - rect.left) / rect.width;
+      const startFocusRatioY =
+        (pinchGesture.startMidpointY - rect.top) / rect.height;
+      const focalX =
+        pinchGesture.startViewBox.x +
+        startFocusRatioX * pinchGesture.startViewBox.width;
+      const focalY =
+        pinchGesture.startViewBox.y +
+        startFocusRatioY * pinchGesture.startViewBox.height;
+      const nextDistance = Math.max(
+        Math.hypot(
+          secondPointer.clientX - firstPointer.clientX,
+          secondPointer.clientY - firstPointer.clientY
+        ),
+        1
+      );
+      const nextZoom =
+        pinchGesture.startViewBox.zoom *
+        (nextDistance / pinchGesture.startDistance);
+      const zoomedCamera = zoomCameraAtPoint(
+        pinchGesture.startViewBox,
+        cameraBounds,
+        nextZoom,
+        startFocusRatioX,
+        startFocusRatioY
+      );
+      const midpointX = (firstPointer.clientX + secondPointer.clientX) / 2;
+      const midpointY = (firstPointer.clientY + secondPointer.clientY) / 2;
+      const focusRatioX = (midpointX - rect.left) / rect.width;
+      const focusRatioY = (midpointY - rect.top) / rect.height;
+
+      renderCamera(
+        clampCamera(
+          {
+            ...zoomedCamera,
+            x: focalX - focusRatioX * zoomedCamera.width,
+            y: focalY - focusRatioY * zoomedCamera.height
+          },
+          cameraBounds
+        )
+      );
+      return;
+    }
+
     const gesture = gestureRef.current;
 
     if (!gesture) {
@@ -338,7 +576,7 @@ export const WorldMap = memo(function WorldMap({
       return;
     }
 
-    if (!gesture || gesture.pointerId !== event.pointerId) {
+    if (gesture.pointerId !== event.pointerId) {
       return;
     }
 
@@ -373,27 +611,85 @@ export const WorldMap = memo(function WorldMap({
 
   const handlePointerUp = (event: ReactPointerEvent<SVGSVGElement>) => {
     const gesture = gestureRef.current;
+    const pinchGesture = pinchGestureRef.current;
+    const releasedPointer = activePointerRef.current.get(event.pointerId);
 
-    if (!gesture || gesture.pointerId !== event.pointerId) {
-      return;
-    }
+    activePointerRef.current.delete(event.pointerId);
 
-    if (!draggingRef.current) {
+    if (
+      gesture &&
+      gesture.pointerId === event.pointerId &&
+      !draggingRef.current
+    ) {
       const countryId =
         getCountryIdFromPoint(event.clientX, event.clientY) ??
         getCountryIdFromTarget(event.target);
 
-      if (countryId && !solvedCountryIdSet.has(countryId)) {
+      if (
+        countryId &&
+        !solvedCountryIdSet.has(countryId) &&
+        !(isMobileViewport && event.pointerType === "touch")
+      ) {
         onCountrySelect(countryId);
       }
     }
 
-    gestureRef.current = null;
-    draggingRef.current = false;
-    setIsDragging(false);
+    if (pinchGesture && pinchGesture.pointerIds.includes(event.pointerId)) {
+      pinchGestureRef.current = null;
+
+      const remainingPointer = Array.from(activePointerRef.current.entries())[0];
+
+      if (remainingPointer) {
+        gestureRef.current = {
+          kind: "drag",
+          pointerId: remainingPointer[0],
+          startX: remainingPointer[1].clientX,
+          startY: remainingPointer[1].clientY,
+          startViewBox: cameraRef.current
+        };
+      } else {
+        gestureRef.current = null;
+      }
+
+      draggingRef.current = false;
+      setIsDragging(false);
+    } else if (gesture && gesture.pointerId === event.pointerId) {
+      gestureRef.current = null;
+      draggingRef.current = false;
+      setIsDragging(false);
+    }
+
+    if (!releasedPointer && activePointerRef.current.size === 0) {
+      setIsDragging(false);
+      draggingRef.current = false;
+      gestureRef.current = null;
+      pinchGestureRef.current = null;
+    }
+
     if ("releasePointerCapture" in event.currentTarget) {
       event.currentTarget.releasePointerCapture(event.pointerId);
     }
+  };
+
+  const handleCountryClick = (
+    event: React.MouseEvent<SVGPathElement>,
+    countryId: CountryId
+  ) => {
+    event.preventDefault();
+
+    if (
+      !isMobileViewport ||
+      draggingRef.current ||
+      solvedCountryIdSet.has(countryId)
+    ) {
+      return;
+    }
+
+    if (typeof event.currentTarget.blur === "function") {
+      event.currentTarget.blur();
+    }
+
+    onCountrySelect(countryId);
   };
 
   const nudgeZoom = (factor: number) => {
@@ -452,6 +748,7 @@ export const WorldMap = memo(function WorldMap({
           onPointerDown={handlePointerDown}
           onPointerLeave={() => setHoveredCountryId(null)}
           onPointerMove={handlePointerMove}
+          onPointerCancel={handlePointerUp}
           onPointerUp={handlePointerUp}
           preserveAspectRatio="xMidYMid meet"
           role="img"
@@ -485,6 +782,7 @@ export const WorldMap = memo(function WorldMap({
                   .join(" ")}
                 data-country-id={country.id}
                 d={country.svgPath}
+                onClick={(event) => handleCountryClick(event, country.id)}
                 onPointerEnter={() => setHoveredCountryId(country.id)}
               />
             );

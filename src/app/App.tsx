@@ -1,4 +1,5 @@
 import { startTransition, useEffect, useMemo, useReducer, useRef, useState } from "react";
+import { flushSync } from "react-dom";
 import { worldAtlasData } from "../data/worldAtlasData";
 import { createInitialGameState, createNewSession, gameReducer } from "../features/game/gameReducer";
 import {
@@ -17,6 +18,11 @@ import type {
 } from "../features/game/gameTypes";
 import { WorldMap } from "../features/map/WorldMap";
 import { HUD } from "../features/ui/HUD";
+import {
+  MobileSearchDock,
+  type MobileSearchDockHandle
+} from "../features/ui/MobileSearchDock";
+import { MobileRunControls } from "../features/ui/MobileRunControls";
 import { ResultsScreen } from "../features/ui/ResultsScreen";
 import { StartScreen } from "../features/ui/StartScreen";
 import { formatDuration } from "../lib/format";
@@ -83,12 +89,15 @@ export function App() {
     variant: "correct" | "wrong";
     token: number;
   } | null>(null);
+  const [isMobileViewport, setIsMobileViewport] = useState(false);
+  const [mobileVisibleBottomPx, setMobileVisibleBottomPx] = useState<number | null>(null);
   const [gameState, dispatch] = useReducer(gameReducer, undefined, createInitialGameState);
   const [selectionHistory, setSelectionHistory] =
     useState<SelectionHistoryState>(EMPTY_SELECTION_HISTORY);
   const [persistenceVersion, setPersistenceVersion] = useState(0);
   const navigatingHistoryCountryIdRef = useRef<string | null>(null);
   const processedPersistenceVersionRef = useRef(0);
+  const mobileSearchDockRef = useRef<MobileSearchDockHandle | null>(null);
   const countries = worldAtlasData.countries;
   const countryCount = countries.length;
   const activeSession = gameState.session;
@@ -140,6 +149,32 @@ export function App() {
       (activeSession.selectedMapCountryId ||
         getFirstUnsolvedCountryId(countries, activeSession.answered))
   );
+
+  useEffect(() => {
+    if (
+      typeof window === "undefined" ||
+      typeof window.matchMedia !== "function"
+    ) {
+      return;
+    }
+
+    const mediaQuery = window.matchMedia("(max-width: 960px)");
+    const applyViewportMode = () => {
+      const isMobile = mediaQuery.matches;
+      setIsMobileViewport(isMobile);
+
+      if (!isMobile) {
+        setMobileVisibleBottomPx(null);
+      }
+    };
+
+    applyViewportMode();
+    mediaQuery.addEventListener("change", applyViewportMode);
+
+    return () => {
+      mediaQuery.removeEventListener("change", applyViewportMode);
+    };
+  }, []);
 
   // Any selection that came from normal play should extend history. A selection
   // that came from "go back" should simply move the history pointer.
@@ -343,6 +378,14 @@ export function App() {
       return;
     }
 
+    if (isMobileViewport) {
+      flushSync(() => {
+        dispatch({ type: "select_map_country", countryId });
+      });
+      mobileSearchDockRef.current?.focusInput();
+      return;
+    }
+
     dispatch({ type: "select_map_country", countryId });
   };
 
@@ -360,6 +403,22 @@ export function App() {
     });
 
     requestPersistence();
+
+    // Mirror the flushSync + focusInput pattern from handleCountrySelect so the
+    // keyboard stays deployed between guesses on mobile.
+    if (isMobileViewport) {
+      flushSync(() => {
+        dispatch({
+          type: "submit_country_name",
+          countryId,
+          nextSelectedCountryId: getNextSelectedCountryId(activeSession.selectedMapCountryId),
+          now: Date.now()
+        });
+      });
+      mobileSearchDockRef.current?.focusInput();
+      return;
+    }
+
     dispatch({
       type: "submit_country_name",
       countryId,
@@ -384,12 +443,13 @@ export function App() {
           <WorldMap
             countries={countries}
             flashEvent={flashEvent}
+            mobileVisibleBottomPx={isMobileViewport ? mobileVisibleBottomPx : null}
             onCountrySelect={gameState.status === "playing" ? handleCountrySelect : () => {}}
             selectedCountryId={activeSession.selectedMapCountryId}
             solvedCountryIds={solvedCountryIds}
             viewBox={worldAtlasData.viewBox}
           />
-          {gameState.status === "playing" ? (
+          {gameState.status === "playing" && !isMobileViewport ? (
             <HUD
               availableCountries={unsolvedCountries}
               canAdvance={canAdvance}
@@ -404,6 +464,23 @@ export function App() {
               selectedCountryId={activeSession.selectedMapCountryId}
               stats={activeSession.stats}
             />
+          ) : null}
+          {gameState.status === "playing" && isMobileViewport ? (
+            <>
+              <MobileRunControls
+                onDone={handleDone}
+                remainingPrompts={remainingPrompts}
+                stats={activeSession.stats}
+              />
+              <MobileSearchDock
+                availableCountries={unsolvedCountries}
+                ref={mobileSearchDockRef}
+                onClearSelection={handleClearMapSelection}
+                onSubmitCountryName={handleSubmitCountryName}
+                onViewportBottomChange={setMobileVisibleBottomPx}
+                selectedCountryId={activeSession.selectedMapCountryId}
+              />
+            </>
           ) : null}
           {gameState.status === "completed" && latestCompletedStats ? (
             <div className="results-modal-backdrop">
