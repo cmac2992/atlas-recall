@@ -7,21 +7,21 @@ export interface SelectionHistoryState {
 
 // We keep manual navigation history outside the reducer because it is a UI concern:
 // it helps Prev/Next browsing, but it does not change scoring rules.
-export const EMPTY_SELECTION_HISTORY: SelectionHistoryState = {
+export const EMPTY_BROWSE_HISTORY: SelectionHistoryState = {
   items: [],
   index: -1
 };
 
 // Recent countries are used as a soft "do not bounce back here immediately" list.
 // We walk backward so the newest visits win when the same country appears twice.
-export function getRecentCountryIds(
-  history: SelectionHistoryState,
+export function getRecentVisitedCountryIds(
+  browseHistory: SelectionHistoryState,
   currentCountryId: CountryId | null,
   memory = 10
 ) {
   const countryIds = currentCountryId
-    ? [...history.items.slice(0, history.index + 1), currentCountryId]
-    : history.items.slice(0, history.index + 1);
+    ? [...browseHistory.items.slice(0, browseHistory.index + 1), currentCountryId]
+    : browseHistory.items.slice(0, browseHistory.index + 1);
   const recentCountryIds: CountryId[] = [];
   const seenCountryIds = new Set<CountryId>();
 
@@ -45,16 +45,16 @@ export function getRecentCountryIds(
 
 // Moving backward through history should not create a duplicate history entry.
 // This keeps Left/Right navigation acting like browser history.
-export function recordSelectionInHistory(
-  history: SelectionHistoryState,
+export function recordVisitedCountry(
+  browseHistory: SelectionHistoryState,
   selectedCountryId: CountryId,
   navigatingCountryId: CountryId | null
 ): SelectionHistoryState {
   if (navigatingCountryId === selectedCountryId) {
-    return history;
+    return browseHistory;
   }
 
-  const truncatedItems = history.items.slice(0, history.index + 1);
+  const truncatedItems = browseHistory.items.slice(0, browseHistory.index + 1);
 
   if (truncatedItems[truncatedItems.length - 1] === selectedCountryId) {
     return {
@@ -70,12 +70,12 @@ export function recordSelectionInHistory(
 }
 
 // "Previous" should only land on countries the player can still work on.
-export function getPreviousUnsolvedCountry(
-  history: SelectionHistoryState,
+export function getPreviousOpenCountry(
+  browseHistory: SelectionHistoryState,
   answered: GameSession["answered"]
 ) {
-  for (let historyIndex = history.index - 1; historyIndex >= 0; historyIndex -= 1) {
-    const countryId = history.items[historyIndex];
+  for (let historyIndex = browseHistory.index - 1; historyIndex >= 0; historyIndex -= 1) {
+    const countryId = browseHistory.items[historyIndex];
 
     if (!answered[countryId]?.correct) {
       return {
@@ -152,7 +152,7 @@ function getNearestCountryId(
 
 // Next still tries to stay geographically local, but "local" is now based on
 // straight-line centroid distance instead of true land borders.
-export function getNextSelectableCountryId(
+export function getNextNearbyCountryId(
   countries: CountryRecord[],
   originCountryId: CountryId | null,
   answered: GameSession["answered"],

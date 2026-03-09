@@ -102,7 +102,7 @@ describe("gameReducer", () => {
 
   it("skips the selected country and advances to the provided next country", () => {
     const nextState = gameReducer(createPlayingState(), {
-      type: "skip_selected_country",
+      type: "move_on_from_selected_country",
       nextSelectedCountryId: "br",
       now: 2_000
     });

@@ -19,6 +19,58 @@ const countries = [
 ];
 
 describe("WorldMap", () => {
+  it("clears the previous flash state when a new country flashes quickly", () => {
+    vi.useFakeTimers();
+
+    const onCountrySelect = vi.fn();
+    const { rerender } = render(
+      <WorldMap
+        countries={countries}
+        flashEvent={{
+          countryId: "ar",
+          variant: "wrong",
+          token: 1
+        }}
+        onCountrySelect={onCountrySelect}
+        selectedCountryId={null}
+        solvedCountryIds={[]}
+        viewBox="0 0 100 50"
+      />
+    );
+
+    const argentinaPath = screen.getByLabelText("Argentina");
+    const brazilPath = screen.getByLabelText("Brazil");
+
+    expect(argentinaPath).toHaveClass("world-map__country--flash-wrong");
+    expect(brazilPath).not.toHaveClass("world-map__country--flash");
+
+    rerender(
+      <WorldMap
+        countries={countries}
+        flashEvent={{
+          countryId: "br",
+          variant: "wrong",
+          token: 2
+        }}
+        onCountrySelect={onCountrySelect}
+        selectedCountryId={null}
+        solvedCountryIds={[]}
+        viewBox="0 0 100 50"
+      />
+    );
+
+    expect(argentinaPath).not.toHaveClass("world-map__country--flash");
+    expect(argentinaPath).not.toHaveClass("world-map__country--flash-wrong");
+    expect(brazilPath).toHaveClass("world-map__country--flash-wrong");
+
+    vi.runAllTimers();
+
+    expect(brazilPath).not.toHaveClass("world-map__country--flash");
+    expect(brazilPath).not.toHaveClass("world-map__country--flash-wrong");
+
+    vi.useRealTimers();
+  });
+
   it("dispatches the clicked country id", () => {
     const onCountrySelect = vi.fn();
 

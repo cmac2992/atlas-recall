@@ -3,7 +3,9 @@ import type { PointerEvent as ReactPointerEvent } from "react";
 import type { CountryId, CountryRecord } from "../game/gameTypes";
 import {
   type CameraState,
+  DESKTOP_SELECTION_VIEWPORT,
   SELECTION_CAMERA_PADDING,
+  type SelectionViewportRect,
   cameraToViewBox,
   clampCamera,
   createInitialCamera,
@@ -20,6 +22,8 @@ import {
 
 interface WorldMapProps {
   countries: CountryRecord[];
+  desktopAutoPanEnabled?: boolean;
+  desktopVisibleLeftPx?: number | null;
   flashEvent: {
     countryId: CountryId;
     variant: "correct" | "wrong";
@@ -27,6 +31,7 @@ interface WorldMapProps {
   } | null;
   mobileVisibleBottomPx?: number | null;
   onCountrySelect: (countryId: CountryId) => void;
+  onToggleDesktopAutoPan?: () => void;
   selectedCountryId: CountryId | null;
   solvedCountryIds: CountryId[];
   viewBox: string;
@@ -88,9 +93,12 @@ function easeInOutCubic(progress: number) {
 
 export const WorldMap = memo(function WorldMap({
   countries,
+  desktopAutoPanEnabled = true,
+  desktopVisibleLeftPx = null,
   flashEvent,
   mobileVisibleBottomPx = null,
   onCountrySelect,
+  onToggleDesktopAutoPan,
   selectedCountryId,
   solvedCountryIds,
   viewBox
@@ -100,7 +108,19 @@ export const WorldMap = memo(function WorldMap({
     aspectRatio: worldBounds.width / worldBounds.height,
     bottom: 0,
     height: 0,
+    left: 0,
+    right: 0,
     top: 0
+  }));
+  const [visualViewportMetrics, setVisualViewportMetrics] = useState(() => ({
+    height:
+      typeof window !== "undefined" && window.visualViewport
+        ? window.visualViewport.height
+        : 0,
+    top:
+      typeof window !== "undefined" && window.visualViewport
+        ? window.visualViewport.offsetTop
+        : 0
   }));
   const cameraBounds = useMemo(
     () =>
@@ -119,6 +139,7 @@ export const WorldMap = memo(function WorldMap({
   const activePointerRef = useRef(new Map<number, PointerSnapshot>());
   const draggingRef = useRef(false);
   const flashTimeoutRef = useRef<number | null>(null);
+  const flashedCountryPathRef = useRef<SVGPathElement | null>(null);
   const renderFrameRef = useRef<number | null>(null);
   const animationFrameRef = useRef<number | null>(null);
   const animationRef = useRef<CameraAnimationState | null>(null);
@@ -148,7 +169,9 @@ export const WorldMap = memo(function WorldMap({
         aspectRatio: rect.width / rect.height,
         top: rect.top,
         bottom: rect.bottom,
-        height: rect.height
+        height: rect.height,
+        left: rect.left,
+        right: rect.right
       });
     };
 
@@ -158,6 +181,38 @@ export const WorldMap = memo(function WorldMap({
 
     return () => {
       resizeObserver.disconnect();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const updateVisualViewportMetrics = () => {
+      const viewport = window.visualViewport;
+
+      if (!viewport) {
+        setVisualViewportMetrics({
+          height: window.innerHeight,
+          top: 0
+        });
+        return;
+      }
+
+      setVisualViewportMetrics({
+        height: viewport.height,
+        top: viewport.offsetTop
+      });
+    };
+
+    updateVisualViewportMetrics();
+    window.visualViewport?.addEventListener("resize", updateVisualViewportMetrics);
+    window.visualViewport?.addEventListener("scroll", updateVisualViewportMetrics);
+
+    return () => {
+      window.visualViewport?.removeEventListener("resize", updateVisualViewportMetrics);
+      window.visualViewport?.removeEventListener("scroll", updateVisualViewportMetrics);
     };
   }, []);
 
@@ -200,10 +255,27 @@ export const WorldMap = memo(function WorldMap({
   }, []);
 
   useEffect(() => {
+    const clearFlashedCountry = () => {
+      if (!flashedCountryPathRef.current) {
+        return;
+      }
+
+      flashedCountryPathRef.current.classList.remove("world-map__country--flash");
+      flashedCountryPathRef.current.classList.remove(
+        "world-map__country--flash-correct"
+      );
+      flashedCountryPathRef.current.classList.remove(
+        "world-map__country--flash-wrong"
+      );
+      flashedCountryPathRef.current = null;
+    };
+
     return () => {
       if (flashTimeoutRef.current !== null) {
         window.clearTimeout(flashTimeoutRef.current);
       }
+
+      clearFlashedCountry();
 
       if (renderFrameRef.current !== null) {
         window.cancelAnimationFrame(renderFrameRef.current);
@@ -295,7 +367,7 @@ export const WorldMap = memo(function WorldMap({
         return;
       }
 
-      const progress = Math.min(1, (now - animation.startAt) / 240);
+      const progress = Math.min(1, (now - animation.startAt) / 500);
       const easedProgress = easeInOutCubic(progress);
       renderCamera(
         interpolateCamera(
@@ -322,6 +394,20 @@ export const WorldMap = memo(function WorldMap({
     countryId: CountryId,
     variant: "correct" | "wrong"
   ) => {
+    const clearFlashedCountry = () => {
+      if (!flashedCountryPathRef.current) {
+        return;
+      }
+
+      flashedCountryPathRef.current.classList.remove("world-map__country--flash");
+      flashedCountryPathRef.current.classList.remove(
+        "world-map__country--flash-correct"
+      );
+      flashedCountryPathRef.current.classList.remove(
+        "world-map__country--flash-wrong"
+      );
+      flashedCountryPathRef.current = null;
+    };
     const svg = svgRef.current;
 
     if (!svg) {
@@ -336,9 +422,12 @@ export const WorldMap = memo(function WorldMap({
       return;
     }
 
-    countryPath.classList.remove("world-map__country--flash");
-    countryPath.classList.remove("world-map__country--flash-correct");
-    countryPath.classList.remove("world-map__country--flash-wrong");
+    if (flashTimeoutRef.current !== null) {
+      window.clearTimeout(flashTimeoutRef.current);
+      flashTimeoutRef.current = null;
+    }
+
+    clearFlashedCountry();
     void countryPath.getBoundingClientRect();
     countryPath.classList.add("world-map__country--flash");
     countryPath.classList.add(
@@ -346,15 +435,10 @@ export const WorldMap = memo(function WorldMap({
         ? "world-map__country--flash-correct"
         : "world-map__country--flash-wrong"
     );
-
-    if (flashTimeoutRef.current !== null) {
-      window.clearTimeout(flashTimeoutRef.current);
-    }
+    flashedCountryPathRef.current = countryPath;
 
     flashTimeoutRef.current = window.setTimeout(() => {
-      countryPath.classList.remove("world-map__country--flash");
-      countryPath.classList.remove("world-map__country--flash-correct");
-      countryPath.classList.remove("world-map__country--flash-wrong");
+      clearFlashedCountry();
       flashTimeoutRef.current = null;
     }, 320);
   };
@@ -367,24 +451,67 @@ export const WorldMap = memo(function WorldMap({
     flashCountry(flashEvent.countryId, flashEvent.variant);
   }, [flashEvent]);
 
-  const effectiveMobileVisibleBottomRatio = useMemo(() => {
-    if (!isMobileViewport || svgViewportMetrics.height <= 0) {
-      return 1;
+  const selectionViewportRect = useMemo<SelectionViewportRect>(() => {
+    if (svgViewportMetrics.height <= 0) {
+      return DESKTOP_SELECTION_VIEWPORT;
     }
 
-    const visibleBottom = Math.min(
-      mobileVisibleBottomPx ?? svgViewportMetrics.bottom,
-      svgViewportMetrics.bottom
-    );
-    const visibleHeight = visibleBottom - svgViewportMetrics.top;
+    if (!isMobileViewport) {
+      if (desktopVisibleLeftPx === null) {
+        return DESKTOP_SELECTION_VIEWPORT;
+      }
 
-    return Math.min(1, Math.max(0.2, visibleHeight / svgViewportMetrics.height));
+      return {
+        leftRatio: Math.min(
+          0.95,
+          Math.max(
+            0,
+            (Math.min(desktopVisibleLeftPx, svgViewportMetrics.right) - svgViewportMetrics.left) /
+              (svgViewportMetrics.right - svgViewportMetrics.left || 1)
+          )
+        ),
+        rightRatio: 1,
+        topRatio: 0,
+        bottomRatio: 1
+      };
+    }
+
+    const visualViewportBottom =
+      visualViewportMetrics.top + visualViewportMetrics.height;
+    const visibleTop = Math.max(svgViewportMetrics.top, visualViewportMetrics.top);
+    const visibleBottom = Math.min(
+      svgViewportMetrics.bottom,
+      mobileVisibleBottomPx ?? visualViewportBottom,
+      visualViewportBottom
+    );
+    const visibleHeight = Math.max(1, visibleBottom - visibleTop);
+
+    return {
+      leftRatio: 0,
+      rightRatio: 1,
+      topRatio: Math.min(
+        1,
+        Math.max(0, (visibleTop - svgViewportMetrics.top) / svgViewportMetrics.height)
+      ),
+      bottomRatio: Math.min(
+        1,
+        Math.max(
+          0.2,
+          (visibleTop - svgViewportMetrics.top + visibleHeight) / svgViewportMetrics.height
+        )
+      )
+    };
   }, [
+    desktopVisibleLeftPx,
     isMobileViewport,
     mobileVisibleBottomPx,
     svgViewportMetrics.bottom,
     svgViewportMetrics.height,
-    svgViewportMetrics.top
+    svgViewportMetrics.left,
+    svgViewportMetrics.right,
+    svgViewportMetrics.top,
+    visualViewportMetrics.height,
+    visualViewportMetrics.top
   ]);
 
   useEffect(() => {
@@ -400,7 +527,10 @@ export const WorldMap = memo(function WorldMap({
     const selectionViewportSignature = [
       selectedCountryId,
       isMobileViewport ? "mobile" : "desktop",
-      Math.round(effectiveMobileVisibleBottomRatio * 1000)
+      Math.round(selectionViewportRect.leftRatio * 1000),
+      Math.round(selectionViewportRect.topRatio * 1000),
+      Math.round(selectionViewportRect.rightRatio * 1000),
+      Math.round(selectionViewportRect.bottomRatio * 1000)
     ].join(":");
 
     if (
@@ -425,8 +555,10 @@ export const WorldMap = memo(function WorldMap({
       cameraBounds,
       selectedCountry,
       isMobileViewport,
-      effectiveMobileVisibleBottomRatio
+      selectionViewportRect
     );
+    const effectiveTargetCamera =
+      !isMobileViewport && !desktopAutoPanEnabled ? cameraRef.current : targetCamera;
 
     // On mobile, always animate when the country itself changes. The
     // shouldAnimateSelectionCamera guard can still suppress redundant moves when
@@ -435,7 +567,7 @@ export const WorldMap = memo(function WorldMap({
       !(isMobileViewport && countryChanged) &&
       !shouldAnimateSelectionCamera(
         cameraRef.current,
-        targetCamera,
+        effectiveTargetCamera,
         worldBounds,
         selectedCountry
       )
@@ -443,12 +575,13 @@ export const WorldMap = memo(function WorldMap({
       return;
     }
 
-    animateCameraUpdate(targetCamera);
+    animateCameraUpdate(effectiveTargetCamera);
   }, [
     cameraBounds,
     countries,
-    effectiveMobileVisibleBottomRatio,
+    desktopAutoPanEnabled,
     isMobileViewport,
+    selectionViewportRect,
     selectedCountryId,
     worldBounds
   ]);
@@ -709,6 +842,17 @@ export const WorldMap = memo(function WorldMap({
     <section className="map-card">
       <div className="map-frame">
         <div className="map-controls">
+          <label className="map-controls__toggle" htmlFor="desktop-auto-pan">
+            <span>Auto-pan</span>
+            <input
+              checked={desktopAutoPanEnabled}
+              id="desktop-auto-pan"
+              type="checkbox"
+              onChange={() => {
+                onToggleDesktopAutoPan?.();
+              }}
+            />
+          </label>
           <button
             aria-label="Zoom in"
             className="map-controls__button map-controls__button--zoom"

@@ -656,6 +656,8 @@ button {
   top: 0.85rem;
   right: 0.85rem;
   z-index: 2;
+  display: flex;
+  align-items: center;
   gap: 0.4rem;
 }
 
@@ -684,6 +686,61 @@ button {
 .map-controls__button--reset {
   min-height: 3.7rem;
   padding-inline: 1.15rem;
+}
+
+.map-controls__toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  min-height: 3.7rem;
+  padding: 0.45rem 0.85rem;
+  border: 1px solid rgba(23, 74, 85, 0.14);
+  border-radius: 999px;
+  background: rgba(235, 248, 255, 0.92);
+  color: #15414d;
+  box-shadow: 0 8px 18px rgba(36, 88, 104, 0.12);
+}
+
+.map-controls__toggle span {
+  font-family: "Avenir Next", "Segoe UI", sans-serif;
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+
+.map-controls__toggle input {
+  width: 2.6rem;
+  height: 1.5rem;
+  margin: 0;
+  appearance: none;
+  border: 1px solid rgba(23, 74, 85, 0.16);
+  border-radius: 999px;
+  background: rgba(194, 216, 225, 0.88);
+  box-shadow: inset 0 1px 2px rgba(18, 55, 68, 0.08);
+  cursor: pointer;
+  position: relative;
+  transition: background-color 180ms ease;
+}
+
+.map-controls__toggle input::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 0.16rem;
+  width: 1.08rem;
+  height: 1.08rem;
+  border-radius: 50%;
+  background: #f7fdff;
+  box-shadow: 0 2px 6px rgba(18, 55, 68, 0.18);
+  transform: translateY(-50%);
+  transition: transform 180ms ease;
+}
+
+.map-controls__toggle input:checked {
+  background: linear-gradient(180deg, #2c7683 0%, #1f5560 100%);
+}
+
+.map-controls__toggle input:checked::after {
+  transform: translate(1.08rem, -50%);
 }
 
 @media (max-width: 960px) {

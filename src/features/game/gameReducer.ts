@@ -33,8 +33,8 @@ interface ClearMapSelectionAction {
   type: "clear_map_selection";
 }
 
-interface SkipSelectedCountryAction {
-  type: "skip_selected_country";
+interface MoveOnFromSelectedCountryAction {
+  type: "move_on_from_selected_country";
   nextSelectedCountryId: CountryId | null;
   now: number;
 }
@@ -53,7 +53,7 @@ export type GameAction =
   | ResumeAction
   | SelectMapCountryAction
   | SubmitCountryNameAction
-  | SkipSelectedCountryAction
+  | MoveOnFromSelectedCountryAction
   | ClearMapSelectionAction
   | FinishRunAction
   | ReturnToStartAction;
@@ -204,7 +204,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
     };
   }
 
-  if (action.type === "skip_selected_country") {
+  if (action.type === "move_on_from_selected_country") {
     const selectedMapCountryId = state.session.selectedMapCountryId;
 
     if (!selectedMapCountryId) {

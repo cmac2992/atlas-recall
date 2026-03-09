@@ -3,12 +3,12 @@ import { flushSync } from "react-dom";
 import { worldAtlasData } from "../data/worldAtlasData";
 import { createInitialGameState, createNewSession, gameReducer } from "../features/game/gameReducer";
 import {
-  EMPTY_SELECTION_HISTORY,
+  EMPTY_BROWSE_HISTORY,
   getFirstUnsolvedCountryId,
-  getNextSelectableCountryId,
-  getPreviousUnsolvedCountry,
-  getRecentCountryIds,
-  recordSelectionInHistory,
+  getNextNearbyCountryId,
+  getPreviousOpenCountry,
+  getRecentVisitedCountryIds,
+  recordVisitedCountry,
   type SelectionHistoryState
 } from "../features/game/navigation";
 import type {
@@ -89,11 +89,13 @@ export function App() {
     variant: "correct" | "wrong";
     token: number;
   } | null>(null);
+  const [desktopAutoPanEnabled, setDesktopAutoPanEnabled] = useState(true);
+  const [desktopVisibleLeftPx, setDesktopVisibleLeftPx] = useState<number | null>(null);
   const [isMobileViewport, setIsMobileViewport] = useState(false);
   const [mobileVisibleBottomPx, setMobileVisibleBottomPx] = useState<number | null>(null);
   const [gameState, dispatch] = useReducer(gameReducer, undefined, createInitialGameState);
-  const [selectionHistory, setSelectionHistory] =
-    useState<SelectionHistoryState>(EMPTY_SELECTION_HISTORY);
+  const [browseHistory, setBrowseHistory] =
+    useState<SelectionHistoryState>(EMPTY_BROWSE_HISTORY);
   const [persistenceVersion, setPersistenceVersion] = useState(0);
   const navigatingHistoryCountryIdRef = useRef<string | null>(null);
   const processedPersistenceVersionRef = useRef(0);
@@ -128,23 +130,23 @@ export function App() {
       effectiveBestRun.startedAt === latestCompletedStats.startedAt &&
       effectiveBestRun.completedAt === latestCompletedStats.completedAt
   );
-  const previousCountrySelection = useMemo(
+  const previousOpenCountry = useMemo(
     () =>
       activeSession
-        ? getPreviousUnsolvedCountry(selectionHistory, activeSession.answered)
+        ? getPreviousOpenCountry(browseHistory, activeSession.answered)
         : null,
-    [activeSession, selectionHistory]
+    [activeSession, browseHistory]
   );
   const recentCountryIds = useMemo(
     () =>
-      getRecentCountryIds(
-        selectionHistory,
+      getRecentVisitedCountryIds(
+        browseHistory,
         activeSession?.selectedMapCountryId ?? null,
         RECENT_COUNTRY_MEMORY
       ),
-    [activeSession?.selectedMapCountryId, selectionHistory]
+    [activeSession?.selectedMapCountryId, browseHistory]
   );
-  const canAdvance = Boolean(
+  const canMoveForward = Boolean(
     activeSession &&
       (activeSession.selectedMapCountryId ||
         getFirstUnsolvedCountryId(countries, activeSession.answered))
@@ -165,6 +167,8 @@ export function App() {
 
       if (!isMobile) {
         setMobileVisibleBottomPx(null);
+      } else {
+        setDesktopVisibleLeftPx(null);
       }
     };
 
@@ -185,8 +189,8 @@ export function App() {
 
     const selectedCountryId = activeSession.selectedMapCountryId;
 
-    setSelectionHistory((currentHistory) =>
-      recordSelectionInHistory(
+    setBrowseHistory((currentHistory) =>
+      recordVisitedCountry(
         currentHistory,
         selectedCountryId,
         navigatingHistoryCountryIdRef.current
@@ -207,13 +211,13 @@ export function App() {
 
       if (event.key === "ArrowRight") {
         event.preventDefault();
-        handleAdvanceSelection();
+        handleMoveForward();
         return;
       }
 
-      if (event.key === "ArrowLeft" && previousCountrySelection) {
+      if (event.key === "ArrowLeft" && previousOpenCountry) {
         event.preventDefault();
-        handleSelectPreviousCountry();
+        handleMoveBackward();
         return;
       }
 
@@ -226,7 +230,7 @@ export function App() {
     window.addEventListener("keydown", handleKeyDown);
 
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [gameState.session, gameState.status, previousCountrySelection]);
+  }, [gameState.session, gameState.status, previousOpenCountry]);
 
   const requestPersistence = () => {
     setPersistenceVersion((currentVersion) => currentVersion + 1);
@@ -270,7 +274,7 @@ export function App() {
 
   const resetRuntimeState = () => {
     navigatingHistoryCountryIdRef.current = null;
-    setSelectionHistory(EMPTY_SELECTION_HISTORY);
+    setBrowseHistory(EMPTY_BROWSE_HISTORY);
   };
 
   // Choosing the next country is mostly a navigation concern, not reducer logic.
@@ -280,7 +284,7 @@ export function App() {
       return null;
     }
 
-    return getNextSelectableCountryId(
+    return getNextNearbyCountryId(
       countries,
       selectedCountryId,
       activeSession.answered,
@@ -314,7 +318,7 @@ export function App() {
     });
   };
 
-  const handleAdvanceSelection = () => {
+  const handleMoveForward = () => {
     if (!activeSession) {
       return;
     }
@@ -333,27 +337,27 @@ export function App() {
     // Once a country is selected, Next means "skip this for now and move on".
     requestPersistence();
     dispatch({
-      type: "skip_selected_country",
+      type: "move_on_from_selected_country",
       nextSelectedCountryId: getNextSelectedCountryId(activeSession.selectedMapCountryId),
       now: Date.now()
     });
   };
 
-  const handleSelectPreviousCountry = () => {
-    if (!previousCountrySelection) {
+  const handleMoveBackward = () => {
+    if (!previousOpenCountry) {
       return;
     }
 
     // Move the history cursor first so the selection effect knows this was a
     // history navigation, not a fresh visit that needs a duplicate entry.
-    navigatingHistoryCountryIdRef.current = previousCountrySelection.countryId;
-    setSelectionHistory((currentHistory) => ({
+    navigatingHistoryCountryIdRef.current = previousOpenCountry.countryId;
+    setBrowseHistory((currentHistory) => ({
       ...currentHistory,
-      index: previousCountrySelection.historyIndex
+      index: previousOpenCountry.historyIndex
     }));
     dispatch({
       type: "select_map_country",
-      countryId: previousCountrySelection.countryId
+      countryId: previousOpenCountry.countryId
     });
   };
 
@@ -442,24 +446,30 @@ export function App() {
         <section className="play-stage">
           <WorldMap
             countries={countries}
+            desktopAutoPanEnabled={desktopAutoPanEnabled}
+            desktopVisibleLeftPx={!isMobileViewport ? desktopVisibleLeftPx : null}
             flashEvent={flashEvent}
             mobileVisibleBottomPx={isMobileViewport ? mobileVisibleBottomPx : null}
             onCountrySelect={gameState.status === "playing" ? handleCountrySelect : () => {}}
+            onToggleDesktopAutoPan={() => {
+              setDesktopAutoPanEnabled((currentValue) => !currentValue);
+            }}
             selectedCountryId={activeSession.selectedMapCountryId}
             solvedCountryIds={solvedCountryIds}
             viewBox={worldAtlasData.viewBox}
           />
           {gameState.status === "playing" && !isMobileViewport ? (
-            <HUD
-              availableCountries={unsolvedCountries}
-              canAdvance={canAdvance}
-              canGoBack={Boolean(previousCountrySelection)}
-              feedbackMessage={buildFeedbackMessage(gameState.lastOutcome)}
-              onClearSelection={handleClearMapSelection}
-              onDone={handleDone}
-              onNext={handleAdvanceSelection}
-              onPrevious={handleSelectPreviousCountry}
-              onSubmitCountryName={handleSubmitCountryName}
+              <HUD
+                availableCountries={unsolvedCountries}
+                canMoveBackward={Boolean(previousOpenCountry)}
+                canMoveForward={canMoveForward}
+                feedbackMessage={buildFeedbackMessage(gameState.lastOutcome)}
+                onVisibleLeftChange={setDesktopVisibleLeftPx}
+                onClearSelection={handleClearMapSelection}
+                onDone={handleDone}
+                onMoveBackward={handleMoveBackward}
+                onMoveForward={handleMoveForward}
+                onSubmitCountryName={handleSubmitCountryName}
               remainingPrompts={remainingPrompts}
               selectedCountryId={activeSession.selectedMapCountryId}
               stats={activeSession.stats}

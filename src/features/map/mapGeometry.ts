@@ -23,7 +23,7 @@ export interface CameraState {
 }
 
 export const MIN_CAMERA_ZOOM = 1;
-export const MAX_CAMERA_ZOOM = 14;
+export const MAX_CAMERA_ZOOM = 60;
 export const SELECTION_CAMERA_PADDING = {
   left: 0.42,
   right: 0.24,
@@ -31,36 +31,27 @@ export const SELECTION_CAMERA_PADDING = {
   bottom: 0.2
 } as const;
 
-// Selected countries should land around 25% of the usable viewport on desktop.
-const TARGET_COUNTRY_COVERAGE = 0.25;
+// Desktop has much more room, so selected countries can sit in the frame more
+// loosely without feeling hard to find.
+const TARGET_COUNTRY_COVERAGE = 0.18;
 
 // On mobile the screen is smaller and the visible area is further reduced by the
 // keyboard and search dock. A higher target keeps countries legible, and Math.min
 // (rather than Math.max) ensures the full bounding box fits in the visible area.
-const MOBILE_TARGET_COUNTRY_COVERAGE = 0.55;
+const MOBILE_TARGET_COUNTRY_COVERAGE = 0.3;
 
-interface SelectionViewportProfile {
-  bottomRatio: number;
-  centerXRatio: number;
-  centerYRatio: number;
+export interface SelectionViewportRect {
   leftRatio: number;
   rightRatio: number;
+  topRatio: number;
+  bottomRatio: number;
 }
 
-const DESKTOP_SELECTION_VIEWPORT: SelectionViewportProfile = {
+export const DESKTOP_SELECTION_VIEWPORT: SelectionViewportRect = {
   leftRatio: 0.24,
   rightRatio: 1,
-  bottomRatio: 1,
-  centerXRatio: 0.62,
-  centerYRatio: 0.5
-};
-
-const MOBILE_SELECTION_VIEWPORT: SelectionViewportProfile = {
-  leftRatio: 0,
-  rightRatio: 1,
-  bottomRatio: 0.62,
-  centerXRatio: 0.5,
-  centerYRatio: 0.31
+  topRatio: 0,
+  bottomRatio: 1
 };
 
 function clamp(value: number, min: number, max: number) {
@@ -258,35 +249,41 @@ function createCameraFromCenterZoom(
   );
 }
 
-export function getSelectionViewportProfile(
-  isMobileViewport: boolean,
-  mobileVisibleBottomRatio = MOBILE_SELECTION_VIEWPORT.bottomRatio
+export function zoomCameraAroundCurrentCenter(
+  camera: CameraState,
+  bounds: ViewBoxBounds,
+  nextZoom: number
 ) {
-  if (!isMobileViewport) {
-    return DESKTOP_SELECTION_VIEWPORT;
-  }
+  return createCameraFromCenterZoom(getCameraCenter(camera), nextZoom, bounds);
+}
 
-  const bottomRatio = clamp(mobileVisibleBottomRatio, 0.32, 1);
+function clampViewportRect(viewportRect: SelectionViewportRect): SelectionViewportRect {
+  const leftRatio = clamp(viewportRect.leftRatio, 0, 0.95);
+  const rightRatio = clamp(viewportRect.rightRatio, leftRatio + 0.05, 1);
+  const topRatio = clamp(viewportRect.topRatio, 0, 0.95);
+  const bottomRatio = clamp(viewportRect.bottomRatio, topRatio + 0.05, 1);
 
   return {
-    ...MOBILE_SELECTION_VIEWPORT,
-    bottomRatio,
-    centerYRatio: bottomRatio / 2
+    leftRatio,
+    rightRatio,
+    topRatio,
+    bottomRatio
   };
 }
 
 function getSuggestedSelectionZoom(
   camera: CameraState,
   country: CountryRecord,
-  viewportProfile: SelectionViewportProfile,
+  viewportRect: SelectionViewportRect,
   isMobileViewport: boolean
 ) {
   const [minX, minY, maxX, maxY] = country.bbox;
   const countryWidth = maxX - minX;
   const countryHeight = maxY - minY;
-  const visibleWidthRatio = viewportProfile.rightRatio - viewportProfile.leftRatio;
+  const visibleWidthRatio = viewportRect.rightRatio - viewportRect.leftRatio;
+  const visibleHeightRatio = viewportRect.bottomRatio - viewportRect.topRatio;
   const currentWidthCoverage = countryWidth / (camera.width * visibleWidthRatio);
-  const currentHeightCoverage = countryHeight / (camera.height * viewportProfile.bottomRatio);
+  const currentHeightCoverage = countryHeight / (camera.height * visibleHeightRatio);
   const horizontalZoomTarget =
     camera.zoom * (TARGET_COUNTRY_COVERAGE / currentWidthCoverage);
   const verticalZoomTarget =
@@ -313,15 +310,17 @@ function positionCameraForCountry(
   bounds: ViewBoxBounds,
   country: CountryRecord,
   nextZoom: number,
-  viewportProfile: SelectionViewportProfile
+  viewportRect: SelectionViewportRect
 ): CameraState {
   const [minX, minY, maxX, maxY] = country.bbox;
   const nextWidth = bounds.width / nextZoom;
   const nextHeight = bounds.height / nextZoom;
   const countryCenterX = (minX + maxX) / 2;
   const countryCenterY = (minY + maxY) / 2;
-  const targetX = countryCenterX - nextWidth * viewportProfile.centerXRatio;
-  const targetY = countryCenterY - nextHeight * viewportProfile.centerYRatio;
+  const centerXRatio = (viewportRect.leftRatio + viewportRect.rightRatio) / 2;
+  const centerYRatio = (viewportRect.topRatio + viewportRect.bottomRatio) / 2;
+  const targetX = countryCenterX - nextWidth * centerXRatio;
+  const targetY = countryCenterY - nextHeight * centerYRatio;
 
   return clampCamera(
     {
@@ -340,17 +339,17 @@ export function getSelectionTargetCamera(
   bounds: ViewBoxBounds,
   country: CountryRecord,
   isMobileViewport: boolean,
-  mobileVisibleBottomRatio?: number
+  viewportRect?: SelectionViewportRect
 ) {
-  const viewportProfile = getSelectionViewportProfile(
-    isMobileViewport,
-    mobileVisibleBottomRatio
+  const effectiveViewportRect = clampViewportRect(
+    viewportRect ?? DESKTOP_SELECTION_VIEWPORT
   );
+
   return positionCameraForCountry(
     bounds,
     country,
-    getSuggestedSelectionZoom(camera, country, viewportProfile, isMobileViewport),
-    viewportProfile
+    getSuggestedSelectionZoom(camera, country, effectiveViewportRect, isMobileViewport),
+    effectiveViewportRect
   );
 }
 
