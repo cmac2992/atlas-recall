@@ -97,7 +97,7 @@ export const HUD = memo(function HUD({
           type="button"
           onClick={onDone}
         >
-          Done
+          Submit
         </button>
       </div>
       <CountryCombobox

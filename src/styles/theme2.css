@@ -1,0 +1,334 @@
+/* ─────────────────────────────────────────────────────────────────────────────
+   Theme 2 — Swiss International
+   Influenced by the International Typographic Style: strict grid, Helvetica,
+   pure red accent, no gradients, no border-radius, hard offset shadows.
+   Same layout as the default; all ornament stripped, all structure exposed.
+   ───────────────────────────────────────────────────────────────────────────── */
+
+[data-theme="2"] {
+  --ocean-color: #E8E8E8;
+  font-family: "Helvetica Neue", Helvetica, "Arial", sans-serif;
+  background: #EBEBEB;
+  color: #111111;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+}
+
+[data-theme="2"] body {
+  background: #EBEBEB;
+}
+
+[data-theme="2"] .shell {
+  background: #EBEBEB;
+}
+
+[data-theme="2"] .shell--play {
+  background: #E8E8E8;
+}
+
+/* Cards: white with ruled black border, hard 4px offset shadow */
+[data-theme="2"] .hero-card,
+[data-theme="2"] .panel,
+[data-theme="2"] .hud-card {
+  background: #FFFFFF;
+  border: 1.5px solid #111111;
+  border-radius: 0;
+  box-shadow: 4px 4px 0 #111111;
+  backdrop-filter: none;
+}
+
+[data-theme="2"] .hud-card {
+  background: #FFFFFF;
+  box-shadow: 4px 4px 0 #111111;
+}
+
+/* Eyebrow */
+[data-theme="2"] .eyebrow {
+  font-family: inherit;
+  color: rgba(17, 17, 17, 0.45);
+  letter-spacing: 0.12em;
+  font-weight: 700;
+}
+
+/* Body copy */
+[data-theme="2"] .hero-copy,
+[data-theme="2"] .panel p,
+[data-theme="2"] .resume-copy {
+  color: rgba(17, 17, 17, 0.72);
+}
+
+/* Buttons: white base, red primary, zero radius */
+[data-theme="2"] .button,
+[data-theme="2"] .map-controls button {
+  background: #FFFFFF;
+  border: 1.5px solid #111111;
+  border-radius: 0;
+  color: #111111;
+  box-shadow: 2px 2px 0 #111111;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  transition: transform 100ms ease, box-shadow 100ms ease;
+}
+
+[data-theme="2"] .button:hover,
+[data-theme="2"] .map-controls button:hover {
+  transform: translate(-1px, -1px);
+  box-shadow: 3px 3px 0 #111111;
+}
+
+[data-theme="2"] .button:disabled,
+[data-theme="2"] .map-controls button:disabled {
+  transform: none;
+  box-shadow: 2px 2px 0 #111111;
+}
+
+[data-theme="2"] .button--primary {
+  background: #E30613;
+  border-color: #8B0000;
+  color: #FFFFFF;
+  box-shadow: 2px 2px 0 #8B0000;
+}
+
+[data-theme="2"] .button--primary:hover {
+  box-shadow: 3px 3px 0 #8B0000;
+}
+
+[data-theme="2"] .button--nav {
+  background: #F0F0F0;
+  color: #111111;
+  border-radius: 0;
+  border-color: #111111;
+  box-shadow: 2px 2px 0 #111111;
+  min-width: 5rem;
+}
+
+[data-theme="2"] .button--nav:hover {
+  background: #E0E0E0;
+}
+
+[data-theme="2"] .button--done {
+  box-shadow: 2px 2px 0 #8B0000;
+}
+
+[data-theme="2"] .hud-card__nav {
+  background: #F0F0F0;
+  border: 1.5px solid #111111;
+  border-radius: 0;
+  padding: 0.12rem;
+}
+
+/* Metrics */
+[data-theme="2"] .hud-metrics div {
+  background: #F0F0F0;
+  border-radius: 0;
+  border: 1px solid rgba(17, 17, 17, 0.15);
+}
+
+[data-theme="2"] .hud-metrics span {
+  font-family: inherit;
+  color: rgba(17, 17, 17, 0.5);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 700;
+  font-size: 0.7rem;
+}
+
+[data-theme="2"] .hud-metrics strong {
+  color: #111111;
+  font-size: 1.05rem;
+}
+
+/* Input */
+[data-theme="2"] .combobox__input {
+  background: #FFFFFF;
+  border: 1.5px solid #111111;
+  border-radius: 0;
+  color: #111111;
+}
+
+[data-theme="2"] .combobox__input:focus {
+  outline: 2px solid #E30613;
+  outline-offset: 0;
+}
+
+[data-theme="2"] .combobox__ghost {
+  background: #FFFFFF;
+  border: 1.5px solid #111111;
+  border-radius: 0;
+  color: rgba(17, 17, 17, 0.3);
+}
+
+[data-theme="2"] .combobox__submit {
+  background: #E30613;
+  border-color: #8B0000;
+  border-radius: 0;
+  color: #FFFFFF;
+}
+
+[data-theme="2"] .combobox__submit:disabled {
+  background: #BBBBBB;
+  border-color: #888888;
+}
+
+[data-theme="2"] .combobox__option {
+  background: #F6F6F6;
+  border: 1px solid rgba(17, 17, 17, 0.14);
+  border-radius: 0;
+  color: #111111;
+}
+
+[data-theme="2"] .combobox__option--active,
+[data-theme="2"] .combobox__option:hover {
+  background: #EEEEEE;
+}
+
+[data-theme="2"] .combobox__empty {
+  color: rgba(17, 17, 17, 0.6);
+}
+
+[data-theme="2"] .button__hint {
+  background: rgba(17, 17, 17, 0.1);
+  border-radius: 0;
+}
+
+/* Map: near-white land, light grey ocean, fine black borders */
+[data-theme="2"] .map-frame {
+  background: #E8E8E8;
+  border-radius: 0;
+}
+
+[data-theme="2"] .world-map__background {
+  fill: #E8E8E8;
+}
+
+[data-theme="2"] .world-map__country {
+  fill: #DCDCDC;
+  stroke: #111111;
+  stroke-width: 0.55;
+}
+
+[data-theme="2"] .world-map__country--interactive:hover,
+[data-theme="2"] .world-map__country--hovered {
+  fill: #CCCCCC;
+}
+
+[data-theme="2"] .world-map__country--selected {
+  fill: #E30613;
+  stroke: #8B0000;
+  stroke-width: 1.8;
+  filter: none;
+}
+
+[data-theme="2"] .world-map__country--solved {
+  fill: #222222;
+}
+
+[data-theme="2"] .world-map__country--solved.world-map__country--hovered {
+  fill: #222222;
+}
+
+[data-theme="2"] .world-map__country--flash-correct {
+  fill: #FFFFFF;
+  stroke: #8B0000;
+  stroke-width: 2;
+  filter: none;
+  animation: none;
+}
+
+[data-theme="2"] .world-map__country--flash-wrong {
+  fill: #E30613;
+  stroke: #8B0000;
+  stroke-width: 3;
+  filter: none;
+}
+
+/* Map controls */
+[data-theme="2"] .map-controls__toggle {
+  background: #FFFFFF;
+  border: 1.5px solid #111111;
+  border-radius: 0;
+  box-shadow: 2px 2px 0 #111111;
+  color: #111111;
+}
+
+[data-theme="2"] .map-controls__toggle input {
+  border-radius: 0;
+  background: #CCCCCC;
+}
+
+[data-theme="2"] .map-controls__toggle input::after {
+  border-radius: 0;
+  background: #111111;
+}
+
+[data-theme="2"] .map-controls__toggle input:checked {
+  background: #E30613;
+}
+
+[data-theme="2"] .map-controls__toggle input:checked::after {
+  background: #FFFFFF;
+}
+
+[data-theme="2"] .map-card__hint {
+  background: rgba(255, 255, 255, 0.92);
+  border-radius: 0;
+  border: 1px solid rgba(17, 17, 17, 0.2);
+  color: rgba(17, 17, 17, 0.65);
+}
+
+/* Results modal */
+[data-theme="2"] .results-modal-backdrop {
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: none;
+}
+
+[data-theme="2"] .results-screen--modal .hero-card,
+[data-theme="2"] .results-screen--modal .panel {
+  background: #FFFFFF;
+}
+
+/* Mobile dock */
+[data-theme="2"] .mobile-search-dock {
+  background: #FFFFFF;
+  border-top: 1.5px solid #111111;
+  border-radius: 0;
+  backdrop-filter: none;
+}
+
+[data-theme="2"] .mobile-search-dock .combobox__input-shell--mobile {
+  background: #FFFFFF;
+  border: 1.5px solid #111111;
+  border-radius: 0;
+}
+
+[data-theme="2"] .mobile-search-dock .combobox__input {
+  border-radius: 0;
+}
+
+[data-theme="2"] .mobile-search-dock .combobox__ghost {
+  border-radius: 0;
+}
+
+[data-theme="2"] .mobile-search-dock .combobox__submit {
+  border-radius: 0;
+  border-left: 1.5px solid #111111;
+}
+
+[data-theme="2"] .mobile-run-menu {
+  background: #FFFFFF;
+  border: 1.5px solid #111111;
+  border-radius: 0;
+  box-shadow: 4px 4px 0 #111111;
+  backdrop-filter: none;
+}
+
+[data-theme="2"] .mobile-run-menu__close {
+  background: #F0F0F0;
+  border: 1.5px solid #111111;
+  border-radius: 0;
+}
+
+[data-theme="2"] .mobile-run-controls__menu-button,
+[data-theme="2"] .mobile-run-controls__done-button {
+  border-radius: 0;
+}

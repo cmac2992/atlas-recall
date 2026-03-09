@@ -1,0 +1,293 @@
+/* ─────────────────────────────────────────────────────────────────────────────
+   Theme 3 — Deep Ocean
+   Full dark mode: midnight navy, luminous cyan accents, glowing selection.
+   Dark glass cards, barely-lit land masses, bioluminescent feedback flashes.
+   Same layout as the default; everything shifted below the light horizon.
+   ───────────────────────────────────────────────────────────────────────────── */
+
+[data-theme="3"] {
+  --ocean-color: #040C1C;
+  font-family: "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+  background: #05101F;
+  color: #C4D6EC;
+  color-scheme: dark;
+}
+
+[data-theme="3"] body {
+  background: #040C1C;
+}
+
+[data-theme="3"] .shell {
+  background: linear-gradient(160deg, #071220 0%, #040C1C 60%);
+}
+
+[data-theme="3"] .shell--play {
+  background: #040C1C;
+}
+
+/* Cards: deep dark glass with subtle cyan halo border */
+[data-theme="3"] .hero-card,
+[data-theme="3"] .panel,
+[data-theme="3"] .hud-card {
+  background: rgba(8, 18, 44, 0.97);
+  border: 1px solid rgba(0, 190, 255, 0.18);
+  border-radius: 1.35rem;
+  box-shadow:
+    0 0 0 1px rgba(0, 190, 255, 0.06),
+    0 24px 56px rgba(0, 0, 0, 0.65),
+    inset 0 1px 0 rgba(0, 200, 255, 0.08);
+  backdrop-filter: blur(14px);
+  color: #C4D6EC;
+}
+
+[data-theme="3"] .hud-card {
+  background: rgba(6, 14, 36, 0.96);
+}
+
+/* Eyebrow */
+[data-theme="3"] .eyebrow {
+  color: rgba(0, 190, 255, 0.55);
+  letter-spacing: 0.14em;
+}
+
+/* Body copy */
+[data-theme="3"] .hero-copy,
+[data-theme="3"] .panel p,
+[data-theme="3"] .resume-copy {
+  color: rgba(160, 200, 235, 0.72);
+}
+
+/* Buttons: dark base with cyan tint */
+[data-theme="3"] .button,
+[data-theme="3"] .map-controls button {
+  background: rgba(12, 28, 62, 0.92);
+  border: 1px solid rgba(0, 190, 255, 0.22);
+  color: #A8C8E8;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.35);
+}
+
+[data-theme="3"] .button:hover,
+[data-theme="3"] .map-controls button:hover {
+  background: rgba(16, 36, 76, 0.96);
+  box-shadow: 0 10px 22px rgba(0, 150, 220, 0.18);
+}
+
+[data-theme="3"] .button--primary {
+  background: linear-gradient(180deg, #0096CC 0%, #005F88 100%);
+  border-color: rgba(0, 150, 200, 0.5);
+  color: #EAF7FF;
+  box-shadow: 0 14px 30px rgba(0, 100, 180, 0.35), inset 0 1px 0 rgba(0, 220, 255, 0.2);
+}
+
+[data-theme="3"] .button--nav {
+  background: rgba(8, 20, 48, 0.88);
+  border-color: rgba(0, 180, 240, 0.18);
+  color: rgba(160, 200, 235, 0.85);
+  box-shadow: inset 0 1px 0 rgba(0, 200, 255, 0.08);
+}
+
+[data-theme="3"] .button--nav:hover {
+  background: rgba(12, 28, 64, 0.94);
+}
+
+[data-theme="3"] .button--done {
+  box-shadow:
+    0 14px 28px rgba(0, 100, 180, 0.4),
+    inset 0 1px 0 rgba(0, 220, 255, 0.18);
+}
+
+[data-theme="3"] .hud-card__nav {
+  background: rgba(6, 14, 36, 0.8);
+  border-color: rgba(0, 180, 240, 0.15);
+}
+
+[data-theme="3"] .button__hint {
+  background: rgba(0, 190, 255, 0.12);
+}
+
+/* Metrics */
+[data-theme="3"] .hud-metrics div {
+  background: rgba(6, 16, 40, 0.72);
+  border: 1px solid rgba(0, 170, 230, 0.1);
+}
+
+[data-theme="3"] .hud-metrics span {
+  color: rgba(100, 160, 210, 0.6);
+}
+
+[data-theme="3"] .hud-metrics strong {
+  color: #B8D4EE;
+}
+
+[data-theme="3"] .hud-card__feedback {
+  color: rgba(140, 185, 225, 0.68);
+}
+
+/* Input */
+[data-theme="3"] .combobox__input {
+  background: rgba(6, 14, 40, 0.94);
+  border: 1px solid rgba(0, 185, 250, 0.22);
+  color: #C4D6EC;
+  caret-color: #00CCFF;
+}
+
+[data-theme="3"] .combobox__input:focus {
+  outline: 2px solid rgba(0, 190, 255, 0.4);
+}
+
+[data-theme="3"] .combobox__ghost {
+  background: rgba(6, 14, 40, 0.92);
+  border-color: rgba(0, 185, 250, 0.22);
+  color: rgba(80, 140, 200, 0.38);
+}
+
+[data-theme="3"] .combobox__submit {
+  background: linear-gradient(180deg, #0096CC 0%, #005F88 100%);
+  border-color: rgba(0, 150, 200, 0.4);
+  color: #EAF7FF;
+}
+
+[data-theme="3"] .combobox__option {
+  background: rgba(8, 20, 50, 0.9);
+  border-color: rgba(0, 170, 230, 0.14);
+  color: #9BBCDA;
+}
+
+[data-theme="3"] .combobox__option--active,
+[data-theme="3"] .combobox__option:hover {
+  background: rgba(12, 30, 70, 0.96);
+  color: #C4D6EC;
+}
+
+[data-theme="3"] .combobox__empty {
+  color: rgba(100, 155, 205, 0.65);
+}
+
+/* Map: near-black ocean, dark forest land, glowing cyan selection */
+[data-theme="3"] .map-frame {
+  background: #040C1C;
+}
+
+[data-theme="3"] .world-map__background {
+  fill: #040C1C;
+}
+
+[data-theme="3"] .world-map__country {
+  fill: #12281E;
+  stroke: rgba(0, 165, 220, 0.35);
+  stroke-width: 0.6;
+}
+
+[data-theme="3"] .world-map__country--interactive:hover,
+[data-theme="3"] .world-map__country--hovered {
+  fill: #1A3A2A;
+}
+
+[data-theme="3"] .world-map__country--selected {
+  fill: #0A3852;
+  stroke: #00CCFF;
+  stroke-width: 1.6;
+  filter: drop-shadow(0 0 0.55rem rgba(0, 200, 255, 0.65));
+}
+
+[data-theme="3"] .world-map__country--solved {
+  fill: #0C3422;
+}
+
+[data-theme="3"] .world-map__country--solved.world-map__country--hovered {
+  fill: #0C3422;
+}
+
+[data-theme="3"] .world-map__country--flash-correct {
+  fill: #00FFB4;
+  stroke: #00A070;
+  stroke-width: 1.8;
+  filter: drop-shadow(0 0 0.65rem rgba(0, 255, 180, 0.85));
+}
+
+[data-theme="3"] .world-map__country--flash-wrong {
+  fill: #FF2240;
+  stroke: #8B000C;
+  stroke-width: 2.4;
+  filter: drop-shadow(0 0 0.85rem rgba(255, 30, 60, 0.95));
+}
+
+/* Map controls */
+[data-theme="3"] .map-controls__toggle {
+  background: rgba(8, 20, 50, 0.92);
+  border-color: rgba(0, 185, 250, 0.2);
+  color: #A8C8E8;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
+}
+
+[data-theme="3"] .map-controls__toggle input {
+  background: rgba(20, 50, 90, 0.88);
+}
+
+[data-theme="3"] .map-controls__toggle input:checked {
+  background: linear-gradient(180deg, #0096CC 0%, #005F88 100%);
+}
+
+[data-theme="3"] .map-card__hint {
+  background: rgba(6, 14, 40, 0.85);
+  color: rgba(120, 170, 215, 0.72);
+  border: 1px solid rgba(0, 185, 250, 0.14);
+}
+
+/* Results modal */
+[data-theme="3"] .results-modal-backdrop {
+  background: rgba(0, 4, 16, 0.55);
+}
+
+[data-theme="3"] .results-screen--modal .hero-card,
+[data-theme="3"] .results-screen--modal .panel {
+  background: rgba(8, 18, 46, 0.98);
+}
+
+/* Mobile dock */
+[data-theme="3"] .mobile-search-dock {
+  background: rgba(6, 14, 38, 0.98);
+  border-top-color: rgba(0, 185, 250, 0.2);
+  backdrop-filter: blur(12px);
+}
+
+[data-theme="3"] .mobile-search-dock .combobox__header h2 {
+  color: rgba(160, 200, 235, 0.85);
+}
+
+[data-theme="3"] .mobile-search-dock .combobox__input-shell--mobile {
+  background: rgba(6, 14, 40, 0.94);
+  border-color: rgba(0, 185, 250, 0.25);
+}
+
+[data-theme="3"] .mobile-search-dock .combobox__submit {
+  border-left-color: rgba(0, 170, 230, 0.2);
+}
+
+[data-theme="3"] .mobile-run-menu {
+  background: rgba(6, 16, 42, 0.98);
+  border-color: rgba(0, 185, 250, 0.18);
+  box-shadow: 0 20px 44px rgba(0, 0, 0, 0.7);
+}
+
+[data-theme="3"] .mobile-run-menu__header h2 {
+  color: #C4D6EC;
+}
+
+[data-theme="3"] .mobile-run-menu__close {
+  background: rgba(8, 20, 52, 0.92);
+  border-color: rgba(0, 185, 250, 0.2);
+  color: #A8C8E8;
+}
+
+[data-theme="3"] .mobile-run-menu__grid span {
+  color: rgba(100, 155, 205, 0.58);
+}
+
+[data-theme="3"] .mobile-run-menu__grid strong {
+  color: #C4D6EC;
+}
+
+[data-theme="3"] .mobile-run-menu__meta {
+  color: rgba(120, 170, 215, 0.65);
+}

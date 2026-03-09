@@ -1,0 +1,377 @@
+/* ─────────────────────────────────────────────────────────────────────────────
+   Theme 5 — The Broadsheet
+   Editorial newspaper design: Times serif, deep red accent, newsprint backgrounds,
+   thick ruled separators. No softness — everything is a hard printed edge.
+   LAYOUT CHANGE: HUD moves to the RIGHT side as a full-height sidebar panel.
+   Map controls shift to the left to avoid the sidebar.
+   ───────────────────────────────────────────────────────────────────────────── */
+
+[data-theme="5"] {
+  --ocean-color: #C8D4DE;
+  font-family: "Times New Roman", "Times", Georgia, serif;
+  background: #D0C8B8;
+  color: #111111;
+}
+
+[data-theme="5"] body {
+  background: #C8D4DE;
+}
+
+[data-theme="5"] .shell {
+  background: linear-gradient(160deg, #C8C0AA 0%, #C8D4DE 55%);
+}
+
+[data-theme="5"] .shell--play {
+  background: #C8D4DE;
+}
+
+/* ── HUD: right full-height sidebar ── */
+[data-theme="5"] .hud-card {
+  position: absolute;
+  top: 0;
+  left: auto;
+  right: 0;
+  bottom: 0;
+  width: min(300px, 38vw);
+  border-radius: 0;
+  background: #F6F1E8;
+  border: none;
+  border-left: 3px solid #111111;
+  box-shadow: -4px 0 18px rgba(0, 0, 0, 0.14);
+  backdrop-filter: none;
+  padding: 0;
+  /* stack sections vertically with ruled dividers */
+  display: grid;
+  grid-template-rows: auto auto auto 1fr;
+  gap: 0;
+  overflow-y: auto;
+  z-index: 3;
+}
+
+/* Each section gets a ruled border-bottom to mimic column rules */
+[data-theme="5"] .hud-card__toolbar {
+  padding: 0.9rem 1.1rem;
+  border-bottom: 2px solid #111111;
+  justify-content: flex-start;
+  gap: 0.5rem;
+}
+
+[data-theme="5"] .combobox {
+  padding: 0.9rem 1.1rem;
+  border-bottom: 1px solid rgba(17, 17, 17, 0.25);
+}
+
+[data-theme="5"] .hud-metrics--compact {
+  padding: 0.9rem 1.1rem;
+  border-bottom: 1px solid rgba(17, 17, 17, 0.2);
+  margin: 0;
+  /* back to 2-col grid in the sidebar where there's room */
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.65rem 0.5rem;
+}
+
+[data-theme="5"] .hud-card__feedback {
+  padding: 0.8rem 1.1rem;
+  font-size: 0.86rem;
+  color: rgba(17, 17, 17, 0.65);
+  border-bottom: 1px solid rgba(17, 17, 17, 0.12);
+  line-height: 1.5;
+}
+
+/* Metrics tiles: newsprint style, no background fill */
+[data-theme="5"] .hud-metrics div {
+  background: transparent;
+  padding: 0;
+  border-radius: 0;
+}
+
+[data-theme="5"] .hud-metrics span {
+  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-size: 0.62rem;
+  color: rgba(17, 17, 17, 0.48);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-weight: 700;
+}
+
+[data-theme="5"] .hud-metrics strong {
+  font-size: 1.45rem;
+  color: #111111;
+  display: block;
+  margin-top: 0.1rem;
+  line-height: 1;
+}
+
+/* ── Buttons ── */
+[data-theme="5"] .button,
+[data-theme="5"] .map-controls button {
+  background: #F6F1E8;
+  border: 1.5px solid #111111;
+  border-radius: 0;
+  color: #111111;
+  box-shadow: 2px 2px 0 rgba(17, 17, 17, 0.18);
+  font-family: inherit;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  transition: transform 100ms ease, box-shadow 100ms ease;
+}
+
+[data-theme="5"] .button:hover,
+[data-theme="5"] .map-controls button:hover {
+  transform: translate(-1px, -1px);
+  box-shadow: 3px 3px 0 rgba(17, 17, 17, 0.2);
+}
+
+[data-theme="5"] .button:disabled {
+  transform: none;
+  box-shadow: 2px 2px 0 rgba(17, 17, 17, 0.1);
+}
+
+[data-theme="5"] .button--primary {
+  background: #AA0000;
+  border-color: #6B0000;
+  color: #FFFFFF;
+  box-shadow: 2px 2px 0 #6B0000;
+}
+
+[data-theme="5"] .button--primary:hover {
+  box-shadow: 3px 3px 0 #6B0000;
+}
+
+[data-theme="5"] .button--nav {
+  background: #EDE8DC;
+  border-color: #111111;
+  border-radius: 0;
+  min-width: 4.5rem;
+}
+
+[data-theme="5"] .button--nav:hover {
+  background: #E0D8C8;
+}
+
+[data-theme="5"] .hud-card__nav {
+  background: #EDE8DC;
+  border: 1.5px solid #111111;
+  border-radius: 0;
+  padding: 0.12rem;
+  gap: 0.3rem;
+}
+
+[data-theme="5"] .button__hint {
+  background: rgba(17, 17, 17, 0.1);
+  border-radius: 0;
+}
+
+/* ── Input ── */
+[data-theme="5"] .combobox__input {
+  background: #FFFFFF;
+  border: 1.5px solid #111111;
+  border-radius: 0;
+  color: #111111;
+  font-family: inherit;
+}
+
+[data-theme="5"] .combobox__input:focus {
+  outline: 2px solid #AA0000;
+  outline-offset: 0;
+}
+
+[data-theme="5"] .combobox__ghost {
+  background: #FFFFFF;
+  border: 1.5px solid #111111;
+  border-radius: 0;
+  color: rgba(17, 17, 17, 0.3);
+}
+
+[data-theme="5"] .combobox__submit {
+  background: #AA0000;
+  border-color: #6B0000;
+  border-radius: 0;
+  color: #FFFFFF;
+}
+
+[data-theme="5"] .combobox__option {
+  background: #EDE8DC;
+  border: 1px solid rgba(17, 17, 17, 0.16);
+  border-radius: 0;
+  color: #111111;
+}
+
+[data-theme="5"] .combobox__option--active,
+[data-theme="5"] .combobox__option:hover {
+  background: #E0D8C8;
+}
+
+[data-theme="5"] .combobox__empty {
+  color: rgba(17, 17, 17, 0.58);
+}
+
+/* ── Map controls: shift to left to avoid sidebar ── */
+[data-theme="5"] .map-controls {
+  right: auto;
+  left: 0.85rem;
+}
+
+[data-theme="5"] .map-controls__toggle {
+  background: #F6F1E8;
+  border: 1.5px solid #111111;
+  border-radius: 0;
+  box-shadow: 2px 2px 0 rgba(17, 17, 17, 0.14);
+  color: #111111;
+}
+
+[data-theme="5"] .map-controls__toggle input {
+  border-radius: 0;
+  background: #C8C0B0;
+}
+
+[data-theme="5"] .map-controls__toggle input::after {
+  border-radius: 0;
+  background: #F6F1E8;
+  box-shadow: 1px 1px 3px rgba(17, 17, 17, 0.2);
+}
+
+[data-theme="5"] .map-controls__toggle input:checked {
+  background: #AA0000;
+}
+
+/* ── Map: newsprint land, pale blue ocean ── */
+[data-theme="5"] .map-frame {
+  background: #C8D4DE;
+  border-radius: 0;
+}
+
+[data-theme="5"] .world-map__background {
+  fill: #C8D4DE;
+}
+
+[data-theme="5"] .world-map__country {
+  fill: #EDE8DC;
+  stroke: #222222;
+  stroke-width: 0.65;
+}
+
+[data-theme="5"] .world-map__country--interactive:hover,
+[data-theme="5"] .world-map__country--hovered {
+  fill: #E0D8C8;
+}
+
+[data-theme="5"] .world-map__country--selected {
+  fill: #FFE8E8;
+  stroke: #AA0000;
+  stroke-width: 2;
+  filter: none;
+}
+
+[data-theme="5"] .world-map__country--solved {
+  fill: #C0B898;
+}
+
+[data-theme="5"] .world-map__country--solved.world-map__country--hovered {
+  fill: #C0B898;
+}
+
+[data-theme="5"] .world-map__country--flash-correct {
+  fill: #FFFFFF;
+  stroke: #AA0000;
+  stroke-width: 2;
+  filter: none;
+  animation: none;
+}
+
+[data-theme="5"] .world-map__country--flash-wrong {
+  fill: #AA0000;
+  stroke: #6B0000;
+  stroke-width: 2.8;
+  filter: none;
+}
+
+[data-theme="5"] .map-card__hint {
+  right: auto;
+  left: 0.85rem;
+  background: rgba(246, 241, 232, 0.92);
+  color: rgba(17, 17, 17, 0.62);
+  border-radius: 0;
+  border: 1px solid rgba(17, 17, 17, 0.18);
+}
+
+/* ── Start/Results screens ── */
+[data-theme="5"] .hero-card,
+[data-theme="5"] .panel {
+  background: #F6F1E8;
+  border: 1.5px solid #111111;
+  border-radius: 0;
+  box-shadow: 4px 4px 0 rgba(17, 17, 17, 0.12);
+  backdrop-filter: none;
+}
+
+[data-theme="5"] .eyebrow {
+  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  color: rgba(17, 17, 17, 0.48);
+  letter-spacing: 0.12em;
+}
+
+[data-theme="5"] .hero-copy,
+[data-theme="5"] .panel p {
+  color: rgba(17, 17, 17, 0.7);
+}
+
+[data-theme="5"] .results-modal-backdrop {
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: none;
+}
+
+[data-theme="5"] .results-screen--modal .hero-card,
+[data-theme="5"] .results-screen--modal .panel {
+  background: #F8F4EC;
+}
+
+/* ── Mobile dock ── */
+[data-theme="5"] .mobile-search-dock {
+  background: #F6F1E8;
+  border-top: 2px solid #111111;
+  border-radius: 0;
+  backdrop-filter: none;
+}
+
+[data-theme="5"] .mobile-search-dock .combobox__input-shell--mobile {
+  background: #FFFFFF;
+  border: 1.5px solid #111111;
+  border-radius: 0;
+}
+
+[data-theme="5"] .mobile-search-dock .combobox__input {
+  border-radius: 0;
+}
+
+[data-theme="5"] .mobile-search-dock .combobox__ghost {
+  border-radius: 0;
+}
+
+[data-theme="5"] .mobile-search-dock .combobox__submit {
+  background: #AA0000;
+  border: none;
+  border-left: 1.5px solid #6B0000;
+  border-radius: 0;
+  color: #FFFFFF;
+}
+
+[data-theme="5"] .mobile-run-menu {
+  background: #F6F1E8;
+  border: 1.5px solid #111111;
+  border-radius: 0;
+  box-shadow: 4px 4px 0 rgba(17, 17, 17, 0.12);
+  backdrop-filter: none;
+}
+
+[data-theme="5"] .mobile-run-menu__close {
+  background: #EDE8DC;
+  border: 1.5px solid #111111;
+  border-radius: 0;
+  color: #111111;
+}
+
+[data-theme="5"] .mobile-run-menu__grid span {
+  color: rgba(17, 17, 17, 0.5);
+}

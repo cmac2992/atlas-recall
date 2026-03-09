@@ -197,7 +197,7 @@ button {
 
 .button--primary {
   background: linear-gradient(180deg, #2c7683 0%, #1f5560 100%);
-  color: #f2fcff;
+  color: #FFE600;
 }
 
 .button--toolbar {
@@ -652,6 +652,7 @@ button {
 }
 
 .map-controls {
+  --map-control-height: 2.75rem;
   position: absolute;
   top: 0.85rem;
   right: 0.85rem;
@@ -665,13 +666,38 @@ button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  height: var(--map-control-height);
+  border: 0;
+  background: transparent;
+  color: #15414d;
+  cursor: pointer;
+  transition: background-color 180ms ease, color 180ms ease;
+}
+
+.map-controls__button:hover {
+  background: rgba(26, 85, 97, 0.08);
+}
+
+.map-controls__button:focus-visible,
+.map-controls__toggle:focus-within {
+  outline: 2px solid rgba(32, 104, 120, 0.4);
+  outline-offset: 2px;
+}
+
+.map-controls__group {
+  display: inline-flex;
+  align-items: center;
+  height: var(--map-control-height);
+  border: 1px solid rgba(23, 74, 85, 0.14);
+  border-radius: 999px;
+  overflow: hidden;
+  background: rgba(235, 248, 255, 0.92);
+  box-shadow: 0 8px 18px rgba(36, 88, 104, 0.12);
 }
 
 .map-controls__button--zoom {
-  width: 3.7rem;
-  height: 3.7rem;
+  width: 3.4rem;
   padding: 0;
-  border-radius: 50%;
   font-size: 1.7rem;
   line-height: 1;
 }
@@ -684,16 +710,32 @@ button {
 }
 
 .map-controls__button--reset {
-  min-height: 3.7rem;
-  padding-inline: 1.15rem;
+  width: 3.7rem;
+  padding: 0;
+  border-left: 1px solid rgba(23, 74, 85, 0.12);
+  line-height: 0;
+}
+
+.map-controls__button--zoom + .map-controls__button--zoom {
+  border-left: 1px solid rgba(23, 74, 85, 0.12);
+}
+
+.map-controls__button--zoom:last-of-type + .map-controls__button--reset,
+.map-controls__button--reset {
+  border-left: 1px solid rgba(23, 74, 85, 0.12);
+}
+
+.map-controls__button--reset svg {
+  display: block;
+  opacity: 0.92;
 }
 
 .map-controls__toggle {
   display: inline-flex;
   align-items: center;
   gap: 0.55rem;
-  min-height: 3.7rem;
-  padding: 0.45rem 0.85rem;
+  height: var(--map-control-height);
+  padding: 0 0.85rem;
   border: 1px solid rgba(23, 74, 85, 0.14);
   border-radius: 999px;
   background: rgba(235, 248, 255, 0.92);

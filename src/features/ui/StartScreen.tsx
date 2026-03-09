@@ -30,14 +30,14 @@ export function StartScreen({
           list limited to places you have not solved yet.
         </p>
         <div className="hero-actions">
-          <button className="button button--primary" type="button" onClick={onStartNew}>
-            New game
-          </button>
           {canResume ? (
-            <button className="button" type="button" onClick={onResume}>
+            <button className="button button--primary" type="button" onClick={onResume}>
               Resume run
             </button>
           ) : null}
+          <button className={`button${canResume ? "" : " button--primary"}`} type="button" onClick={onStartNew}>
+            New game
+          </button>
         </div>
         {canResume && resumeLabel ? (
           <p className="resume-copy">

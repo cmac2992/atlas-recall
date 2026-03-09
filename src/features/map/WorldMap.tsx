@@ -853,32 +853,51 @@ export const WorldMap = memo(function WorldMap({
               }}
             />
           </label>
-          <button
-            aria-label="Zoom in"
-            className="map-controls__button map-controls__button--zoom"
-            type="button"
-            onClick={() => nudgeZoom(1.22)}
-          >
-            <span aria-hidden="true">+</span>
-          </button>
-          <button
-            aria-label="Zoom out"
-            className="map-controls__button map-controls__button--zoom"
-            type="button"
-            onClick={() => nudgeZoom(1 / 1.22)}
-          >
-            <span aria-hidden="true">-</span>
-          </button>
-          <button
-            className="map-controls__button map-controls__button--reset"
-            type="button"
-            onClick={() => {
-              stopCameraAnimation();
-              renderCamera(initialCamera);
-            }}
-          >
-            Reset
-          </button>
+          <div className="map-controls__group">
+            <button
+              aria-label="Zoom in"
+              className="map-controls__button map-controls__button--zoom"
+              type="button"
+              onClick={() => nudgeZoom(1.22)}
+            >
+              <span aria-hidden="true">+</span>
+            </button>
+            <button
+              aria-label="Zoom out"
+              className="map-controls__button map-controls__button--zoom"
+              type="button"
+              onClick={() => nudgeZoom(1 / 1.22)}
+            >
+              <span aria-hidden="true">-</span>
+            </button>
+            <button
+              aria-label="Reset zoom"
+              className="map-controls__button map-controls__button--reset"
+              type="button"
+              onClick={() => {
+                stopCameraAnimation();
+                renderCamera(initialCamera);
+              }}
+            >
+              <svg
+                aria-hidden="true"
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M4 9V5h4" />
+                <path d="M20 9V5h-4" />
+                <path d="M4 15v4h4" />
+                <path d="M20 15v4h-4" />
+                <circle cx="12" cy="12" r="1.5" />
+              </svg>
+            </button>
+          </div>
         </div>
         <svg
           aria-label="World map"
@@ -906,9 +925,12 @@ export const WorldMap = memo(function WorldMap({
             y={cameraBounds.minY}
           />
           {countries.map((country) => {
+            if (country.id === selectedCountryId) {
+              return null;
+            }
+
             const isHovered = country.id === hoveredCountryId;
             const isSolved = solvedCountryIdSet.has(country.id);
-            const isSelected = country.id === selectedCountryId;
 
             return (
               <path
@@ -918,7 +940,6 @@ export const WorldMap = memo(function WorldMap({
                   "world-map__country",
                   !isSolved ? "world-map__country--interactive" : "",
                   isSolved ? "world-map__country--disabled" : "",
-                  isSelected ? "world-map__country--selected" : "",
                   isSolved ? "world-map__country--solved" : "",
                   isHovered ? "world-map__country--hovered" : ""
                 ]
@@ -931,6 +952,28 @@ export const WorldMap = memo(function WorldMap({
               />
             );
           })}
+          {selectedCountryId && (() => {
+            const country = countries.find((c) => c.id === selectedCountryId);
+            if (!country) return null;
+            const isHovered = country.id === hoveredCountryId;
+            return (
+              <path
+                key={`${country.id}-selected`}
+                aria-label={country.displayName}
+                className={[
+                  "world-map__country",
+                  "world-map__country--selected",
+                  isHovered ? "world-map__country--hovered" : ""
+                ]
+                  .filter(Boolean)
+                  .join(" ")}
+                data-country-id={country.id}
+                d={country.svgPath}
+                onClick={(event) => handleCountryClick(event, country.id)}
+                onPointerEnter={() => setHoveredCountryId(country.id)}
+              />
+            );
+          })()}
         </svg>
       </div>
       <p className="map-card__hint">
