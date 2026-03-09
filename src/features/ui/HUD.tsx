@@ -127,7 +127,8 @@ export const HUD = memo(function HUD({
         </div>
       </div>
       <p className="hud-card__feedback">
-        {feedbackMessage} First-try: {formatPercent(stats.firstTryCorrect, stats.totalCountries)}.
+        {feedbackMessage} First-try: {formatPercent(stats.firstTryCorrect, stats.totalCountries)}. Skips:{" "}
+        {stats.skipsUsed}.
       </p>
     </aside>
   );
